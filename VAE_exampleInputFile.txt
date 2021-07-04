@@ -1,0 +1,22 @@
+#{10} -> the first digit represents the ith class, the second digit represents whether real or virtual data.  '{' is used as a delimiter
+#Computer 'A' Path, #Computer 'B' Path, #Computer 'C' Path
+data/,data/,data/, 
+biplane_00.png,{10}
+biplane_01.png,{10}
+biplane_03.png,{10}
+biplane_04.png,{10}
+biplane_05.png,{10}
+biplane_06.png,{10}
+biplane_08.png,{10}
+biplane_09.png,{10}
+biplane_10.png,{10}
+biplane_11.png,{10}
+biplane_12.png,{10}
+biplane_13.png,{10}
+biplane_14.png,{10}
+biplane_15.png,{10}
+biplane_16.png,{10}
+biplane_17.png,{10}
+biplane_18.png,{10}
+biplane_19.png,{10}
+biplane_20.png,{10}
