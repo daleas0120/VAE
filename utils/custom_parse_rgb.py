@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Custom Text Parser
 
 import ntpath

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import time
 import tensorflow as tf
 from tensorflow import keras
