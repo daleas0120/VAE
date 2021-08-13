@@ -114,3 +114,4 @@ class VAE(keras.Model):
             "kl_loss": kl_loss,
             "style_loss": sL,
         }
+        
