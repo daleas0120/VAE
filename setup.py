@@ -15,6 +15,7 @@ setup(
         "sklearn",
         "tabulate",
         "tensorflow",
+        "tensorflow-gpu",
         "tqdm",
     ],
 )
