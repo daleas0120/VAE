@@ -1,19 +1,24 @@
 #!/usr/bin/env python
 
-import argparse
 """
 ## Setup
 """
-import numpy as np
-import os
-from datetime import datetime as dt
-import matplotlib.pyplot as plt
+
+import argparse
 import cv2
-import tensorflow as tf
+import os
+from datetime import datetime
+
+import numpy as np
 import pandas as pd
+
+import matplotlib.pyplot as plt
+
+import tensorflow as tf
 from tensorflow import keras
-from utils import writeResults as write
-from utils.VAE_utils import RGB_Dataset
+
+from VAE.utils import writeResults
+from VAE.utils.VAE_utils import RGB_Dataset
 
 
 print(tf.__version__)
@@ -33,11 +38,11 @@ def main():
     """
     ### Load Model
     """
-    encoder = keras.models.load_model(PATH_TO_ENCODER + "/encoder")
+    encoder = keras.models.load_model(os.path.join(PATH_TO_ENCODER, "encoder"))
     encoder.summary()
     encoder.compile()
 
-    decoder = keras.models.load_model(PATH_TO_DECODER + "/decoder")
+    decoder = keras.models.load_model(os.path.join(PATH_TO_DECODER, "decoder"))
     decoder.summary()
     decoder.compile()
 
@@ -50,14 +55,16 @@ def main():
     normalised_input = (imgs) / np.max(imgs)
     imgs = normalised_input
 
-    now = "{:%Y%m%dT%H%M}".format(dt.now())
+    now = "{:%Y%m%dT%H%M}".format(datetime.now())
 
     if (PATH_TO_DECODER == PATH_TO_ENCODER):
-        tb_path = PATH_TO_DECODER + "/results_"+now
+        tb_path = os.path.join(PATH_TO_DECODER, f"results_{now}")
     else:
-        tb_path = LOG_DIR+"/results_"+now
+        tb_path = os.path.join(LOG_DIR, f"results_{now}")
 
     # Create results directory
+    # TODO: WindowsError is specific to Windows and does not exist on Linux
+    # TODO: This exception has a logical flaw
     try:
         os.mkdir(tb_path)
     except WindowsError:
@@ -83,6 +90,7 @@ def main():
 
     # save output to txt files in log
     print('Saving to text files.')
+    # TODO: Joins need to be properly resolved
     np.savetxt((tb_path + '/'+ now +'_z_mean.txt'), z_mean_results, delimiter=',')
     np.savetxt((tb_path + '/'+ now +'_z_log_var.txt'), z_log_var_results, delimiter=',')
     np.savetxt((tb_path + '/'+ now +'z.txt'), z_results, delimiter=',')
@@ -131,7 +139,7 @@ def main():
         loss_per_img = []
         path = filepath + "/generatedImgs/"
         os.mkdir(path)
-        num_imgs = len(orig_list);
+        num_imgs = len(orig_list)
         for i in range(num_imgs):
             gt_img = orig_imgs[i]
             img_name = orig_list[i]['filename']
@@ -173,7 +181,7 @@ def main():
     loss_per_img = generate_img_set(decoder, z_results, tb_path, orig_list, imgs, IMG_DIM, IMG_CH)
 
     print("Saving Results to File")
-    write.simpleResults(tb_path, now+"results.csv", orig_list, loss_per_img)
+    writeResults.simpleResults(tb_path, now+"results.csv", orig_list, loss_per_img)
 
     """
     ## Display a grid of sampled images
@@ -250,11 +258,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--labels', type=str, default = '.',
                         help="Ground Truth File with labels")
-    parser.add_argument('--encoderPath', type=str, default=None,
+    parser.add_argument('--encoderPath', type=str, default='.',
                         help="path containing encoder")
-    parser.add_argument('--decoderPath', type=str, default=None,
+    parser.add_argument('--decoderPath', type=str, default='.',
                         help="path containing decoder")
-    parser.add_argument('--logDir', type=str, default=None,
+    parser.add_argument('--logDir', type=str, default='.',
                         help="path where logs will be saved")
     parser.add_argument('--imgDim', type=int, default=128)
     parser.add_argument('--imgCh', type=int, default=3)

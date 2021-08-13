@@ -14,9 +14,9 @@
 import argparse
 import sys
 import os
-cwd = os.path.abspath(os.path.dirname( __file__ ))
-sys.path.append(cwd)
-print('CWD: '+cwd)
+#cwd = os.path.abspath(os.path.dirname( __file__ ))
+#sys.path.append(cwd)
+#print('CWD: '+cwd)
 
 """
 ## Setup
@@ -25,9 +25,9 @@ import numpy as np
 from datetime import datetime as dt
 import tensorflow as tf
 from tensorflow import keras
-from utils.VAE_utils import RGB_Dataset
-from utils.VAE_utils import style_loss
-from include import VAE_arch
+from VAE.utils.VAE_utils import RGB_Dataset
+from VAE.utils.VAE_utils import style_loss
+from VAE.include import VAE_arch
 
 print('Keras: '+keras.__version__)
 print('Tensorflow: ' + tf.__version__)
