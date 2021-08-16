@@ -1,14 +1,21 @@
+#!/usr/bin/env python
+
+import json
+import os
 import time
+from tqdm import trange
+
+import numpy as np
+
 import tensorflow as tf
 from tensorflow import keras
-from utils import custom_parse_rgb as parse_txt
-import os
-import json
-import skimage.io
-import numpy as np
+
 import skimage as sk
-from utils import utils as ut
-from tqdm import trange
+import skimage.io
+
+from VAE.utils import utils as ut
+from VAE.utils import custom_parse_rgb as parse_txt
+
 
 class RGB_Dataset(ut.Dataset):
 

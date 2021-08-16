@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Custom Text Parser
 
 import ntpath
@@ -7,7 +9,42 @@ from matplotlib import collections
 # For input files that begin by specifying the root data directory, a PLATFORM variable
 # can be defined for use in the load() function on line 49
 
-PLATFORM = ""
+PLATFORM = os.path.abspath(os.path.join(os.path.dirname( __file__ ),'..'))
+
+def getClassName(n):
+    """
+    Maps first digit of integer image label to class name
+    n: int image label
+    returns: Class name as string
+    """
+    class_idx = n%10
+
+    if class_idx == 1:
+        return 'plane'
+    elif class_idx == 2:
+        return 'glider'
+    elif class_idx == 3:
+        return 'kite'
+    elif class_idx == 4:
+        return 'quadcopter'
+    elif class_idx == 5:
+        return 'eagle'
+    else:
+        return 'None'
+
+def getDataType(n):
+    """
+    Maps second digit of integer img label to data type (real data or synthetic data)
+    n: int image label
+    returns: string label indicating RW or VW label
+    """
+
+    type_idx = n//10
+    if type_idx == 0:
+        return 'RW'
+    else:
+        return 'VW'
+
 
 def load_csv(filepath):
     import pandas as pd
@@ -57,7 +94,7 @@ def load(filepath: object) -> object:
         elif platform == ("LAMBDA1" or "LAMBDA2"):
             img_dir = paths[2]
         else:
-            img_dir = paths[1]
+            img_dir = platform+'/'+paths[1]
 
         print('Getting data from '+img_dir)
         img_dir.strip("\n")
@@ -78,6 +115,7 @@ def load(filepath: object) -> object:
                 d['filename'] = name
                 d['size'] = img_size
                 d['img_path'] = img_path
+                d['z_filename']= 'None'
 
                 parts.remove(parts[0])
 
@@ -88,7 +126,11 @@ def load(filepath: object) -> object:
 
                     tmp_data = parts[0].split("}")
                     tmp_data = tmp_data[0].split(",")
-                    label = tmp_data[len(tmp_data) - 1]
+                    label = int(tmp_data[len(tmp_data) - 1])
+
+                    d['Class'] = getClassName(label)
+                    d['DataType'] = getDataType(label)
+
                     tmp_data.remove(tmp_data[len(tmp_data) - 1])
 
                     tmp_dict = {}

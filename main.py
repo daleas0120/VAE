@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 #"""
 #Title: Variational AutoEncoder
@@ -13,9 +14,9 @@
 import argparse
 import sys
 import os
-cwd = os.path.abspath(os.path.dirname( __file__ ))
-sys.path.append(cwd)
-print('CWD: '+cwd)
+#cwd = os.path.abspath(os.path.dirname( __file__ ))
+#sys.path.append(cwd)
+#print('CWD: '+cwd)
 
 """
 ## Setup
@@ -24,9 +25,10 @@ import numpy as np
 from datetime import datetime as dt
 import tensorflow as tf
 from tensorflow import keras
-from utils.VAE_utils import RGB_Dataset
-from utils.VAE_utils import style_loss
-from include import VAE_arch
+from VAE.utils.VAE_utils import RGB_Dataset
+from VAE.utils.VAE_utils import style_loss
+from VAE.include import VAE_arch
+from VAE import VAE
 
 print('Keras: '+keras.__version__)
 print('Tensorflow: ' + tf.__version__)
@@ -81,117 +83,6 @@ def main():
     decoder.summary()
 
     """
-    ## Define the VAE as a `Model` with a custom `train_step`
-    """
-
-    class VAE(keras.Model):
-        def __init__(self, encoder, decoder, **kwargs):
-            super(VAE, self).__init__(**kwargs)
-            self.encoder = encoder
-            self.decoder = decoder
-
-        def train_step(self, data):
-            if isinstance(data, tuple):
-                data = data[0]
-            with tf.GradientTape() as tape:
-                content_weight = WEIGHT_BCE
-                style_weight = WEIGHT_SL
-                kl_weight = WEIGHT_KL
-
-                # Send the image through the encoder, return conv layer activations and latent space embedding
-                [ec1_0, ec2_0, ec3_0, _, _, z_mean_0, z_log_var_0, z_0] = self.encoder(data)
-
-                # Decode latent space representation to obtain reconstruction image and conv layer activations
-                [_, reshape, dc3, dc2, reconstruction] = self.decoder(z_0)
-
-                # Encode the reconstruction to compare conv layer activations
-                [ec1_1, ec2_1, ec3_1, _, _, _, _, _] = self.encoder(reconstruction)
-
-                # Reconstruction loss is BCE
-                reconstruction_loss = tf.reduce_mean(
-                    keras.losses.binary_crossentropy(data, reconstruction)
-                )
-                reconstruction_loss *= content_weight
-
-                # Latent Space Loss us Kullback-Leibler Divergence
-                kl_loss = 1 + z_log_var_0 - tf.square(z_mean_0) - tf.exp(z_log_var_0)
-                kl_loss = tf.reduce_mean(kl_loss)
-                kl_loss *= kl_weight
-
-                # Style loss is gram matrix comparison of matched encoder and decoder layers for the
-                # original input image and the reconstructed image
-
-                # Encoded vs Decoded Img Activations in the Encoder
-                sl1 = style_loss(ec1_0, ec1_1, IMG_DIM, IMG_DIM)
-                sl2 = style_loss(ec2_0, ec2_1, IMG_DIM, IMG_DIM)
-                sl3 = style_loss(ec3_0, ec3_1, IMG_DIM, IMG_DIM)
-
-                # Encoder vs Decoder Activations for the original image
-                sl4 = style_loss(ec1_0, dc2, IMG_DIM, IMG_DIM)
-                sl5 = style_loss(ec2_0, dc3, IMG_DIM, IMG_DIM)
-                sl6 = style_loss(ec3_0, reshape, IMG_DIM, IMG_DIM)
-
-                sL = tf.reduce_mean((style_weight / 6) * (sl1 + sl2 + sl3 + sl4 + sl5 + sl6))
-
-                total_loss = reconstruction_loss + kl_loss + sL
-
-            grads = tape.gradient(total_loss, self.trainable_weights)
-            self.optimizer.apply_gradients(zip(grads, self.trainable_weights))
-            return {
-                "loss": total_loss,
-                "reconstruction_loss": reconstruction_loss,
-                "kl_loss": kl_loss,
-                "style_loss": sL,
-            }
-
-        def test_step(self, data):
-            if isinstance(data, tuple):
-                data = data[0]
-
-            content_weight = WEIGHT_BCE
-            style_weight = WEIGHT_SL
-            kl_weight = WEIGHT_KL
-
-            [ec1_0, ec2_0, ec3_0, _, _, z_mean_0, z_log_var_0, z_0] = self.encoder(data)
-
-            [_, reshape, dc3, dc2, reconstruction] = self.decoder(z_0)
-
-            [ec1_1, ec2_1, ec3_1, _, _, _, _, _] = self.encoder(reconstruction)
-
-            reconstruction_loss = tf.reduce_mean(
-                keras.losses.binary_crossentropy(data, reconstruction)
-            )
-            reconstruction_loss *= content_weight
-
-            kl_loss = 1 + z_log_var_0 - tf.square(z_mean_0) - tf.exp(z_log_var_0)
-            kl_loss = tf.reduce_mean(kl_loss)
-            kl_loss *= kl_weight
-
-            # Get style losses
-
-            # Encoded vs Decoded Img Activations in the Encoder
-            sl1 = style_loss(ec1_0, ec1_1, IMG_DIM, IMG_DIM)
-            sl2 = style_loss(ec2_0, ec2_1, IMG_DIM, IMG_DIM)
-            sl3 = style_loss(ec3_0, ec3_1, IMG_DIM, IMG_DIM)
-
-            # Encoder vs Decoder Activations
-            sl4 = style_loss(ec1_0, dc2, IMG_DIM, IMG_DIM)
-            sl5 = style_loss(ec2_0, dc3, IMG_DIM, IMG_DIM)
-            sl6 = style_loss(ec3_0, reshape, IMG_DIM, IMG_DIM)
-
-            sL = tf.reduce_mean((style_weight / 6) * (sl1 + sl2 + sl3 + sl4 + sl5 + sl6))
-
-            total_loss = reconstruction_loss + kl_loss + sL
-
-
-            return {
-                "loss": total_loss,
-                "reconstruction_loss": reconstruction_loss,
-                "kl_loss": kl_loss,
-                "style_loss": sL,
-            }
-
-    """
     ## Import Training Data
     """
     dataset = RGB_Dataset()
@@ -221,7 +112,7 @@ def main():
         now = "{:%Y%m%dT%H%M}".format(dt.now())
         tb_path = LOG_DIR+"/"+now
 
-    vae = VAE(encoder, decoder)
+    vae = VAE(encoder, decoder, WEIGHT_BCE, WEIGHT_SL, WEIGHT_KL, IMG_DIM)
     vae.compile(optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE))
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=(tb_path), histogram_freq=10)
 
