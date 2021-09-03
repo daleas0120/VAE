@@ -5,6 +5,7 @@
 import ntpath
 import os
 from matplotlib import collections
+import tqdm
 
 # For input files that begin by specifying the root data directory, a PLATFORM variable
 # can be defined for use in the load() function on line 49
@@ -49,9 +50,10 @@ def getDataType(n):
 def load_csv(filepath):
     import pandas as pd
     annotations = {}
-    df = pd.read_csv(filepath)
+    df = pd.read_csv(filepath, skip_blank_lines=True)
+    df = df.dropna()
 
-    for index, row in df.iterrows():
+    for index, row in tqdm.tqdm(df.iterrows(), desc='loading csv'):
         d = {}  # creates dict for this file
         img_dir = row.filePath
         rgb_img = row.RGB_IMG_NAME
@@ -94,7 +96,7 @@ def load(filepath: object) -> object:
         elif platform == ("LAMBDA1" or "LAMBDA2"):
             img_dir = paths[2]
         else:
-            img_dir = platform+'/'+paths[1]
+            img_dir = os.path.join(platform, paths[1])
 
         print('Getting data from '+img_dir)
         img_dir.strip("\n")
