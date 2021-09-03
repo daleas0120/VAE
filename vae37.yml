@@ -16,4 +16,5 @@ dependencies:
     - sklearn
     - tabulate
     - tensorboard==2.5.0
+    - tensorflow-gpu
     - tqdm

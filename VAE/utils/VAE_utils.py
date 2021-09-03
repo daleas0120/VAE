@@ -3,7 +3,9 @@
 import json
 import os
 import time
+import tqdm
 from tqdm import trange
+import shutil
 
 import numpy as np
 
@@ -19,7 +21,7 @@ from VAE.utils import custom_parse_rgb as parse_txt
 
 class RGB_Dataset(ut.Dataset):
 
-    def load_rgb(self, IMG_DIM, IMG_CH, dataset_dir=None, groundTruthFile=None):
+    def load_rgb(self, IMG_DIM, IMG_CH, dataset_dir=None, groundTruthFile=None, output_preprocess_path=None):
 
         labels = []
         imgs = []
@@ -70,14 +72,19 @@ class RGB_Dataset(ut.Dataset):
             print("ERROR: GroundTruthFile type is not .txt or .json")
             return
 
-        annotations = list(annotations.values())  # don't need the dict keys
+        # Create output directory for preprocessed images
+
+        if output_preprocess_path is not None:
+            if os.path.exists(output_preprocess_path):
+                assert(os.path.isdir(output_preprocess_path))
+                shutil.rmtree(output_preprocess_path)
+            os.makedirs(output_preprocess_path)
+
+        annotations = list(annotations.values())
 
         # Add images
 
-        print("Loading Images...")
-        for idx in trange(0, annotations.__len__()):
-
-            a = annotations[idx]
+        for idx,a in tqdm.tqdm(enumerate(annotations), desc='Loading Images', total=len(annotations)):
 
             # Load img set into memory.  This is only manageable since the dataset is tiny.
             image = np.array(skimage.io.imread(a['img_path']))
@@ -96,6 +103,10 @@ class RGB_Dataset(ut.Dataset):
                     z_image = sk.transform.resize(z_image[:, :, 1], (IMG_DIM, IMG_DIM, 1))
 
                 image = np.dstack((image, z_image))
+
+            # Write out the preprocessed image
+            if output_preprocess_path is not None:
+                skimage.io.imsave(os.path.join(output_preprocess_path, a['filename']), image)
 
             labels.append([a['Class'], a['DataType']])
             imgs.append(image)

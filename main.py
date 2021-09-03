@@ -46,6 +46,7 @@ def main():
     VALIDATION_SPLIT = args.valSplit
     GT_FILE = args.labels
     LOG_DIR = args.logDir
+    OUTPUT_PREPROCESS_PATH = args.outputPreprocessPath
 
     WEIGHT_SL = 1e7
     WEIGHT_KL = -0.5
@@ -54,7 +55,7 @@ def main():
     if LOG_DIR==None:
         LOG_DIR=os.path.abspath(os.curdir)
 
-    print("LOG_DIR: " + LOG_DIR)
+    print(f"LOG_DIR: {LOG_DIR}")
 
     PATH_TO_ENCODER = args.encoderPath
     PATH_TO_DECODER = args.decoderPath
@@ -64,7 +65,7 @@ def main():
     """
 
     if PATH_TO_ENCODER:
-        encoder = keras.models.load_model(PATH_TO_ENCODER+"/encoder")
+        encoder = keras.models.load_model(os.path.join(PATH_TO_ENCODER, "encoder"))
     else:
         encoder = VAE_arch.encoder_3conv7c(IMG_DIM, IMG_CH, LATENT_DIM)
 
@@ -75,7 +76,7 @@ def main():
     """
 
     if PATH_TO_DECODER:
-        decoder = keras.models.load_model(PATH_TO_DECODER+"/decoder")
+        decoder = keras.models.load_model(os.path.join(PATH_TO_DECODER,"decoder"))
     else:
         # Decoding network
         decoder = VAE_arch.decoder_3conv7c(LATENT_DIM)
@@ -87,7 +88,12 @@ def main():
     """
     dataset = RGB_Dataset()
 
-    orig_imgs, labels, orig_list = dataset.load_rgb(IMG_DIM, IMG_CH, groundTruthFile=GT_FILE)
+    orig_imgs, labels, orig_list = dataset.load_rgb(
+        IMG_DIM, 
+        IMG_CH, 
+        groundTruthFile=GT_FILE, 
+        output_preprocess_path=OUTPUT_PREPROCESS_PATH
+    )
 
     # randomize order
     imgs = np.random.permutation(orig_imgs)
@@ -100,7 +106,7 @@ def main():
     # normalize training data
     normalised_input = (imgs) / np.max(imgs)
     imgs = normalised_input
-    print('Images Normalized: '+str(np.max(imgs)))
+    print(f'Images Normalized: {np.max(imgs)}')
 
     """
     ## Train the VAE
@@ -110,7 +116,7 @@ def main():
 
     else:
         now = "{:%Y%m%dT%H%M}".format(dt.now())
-        tb_path = LOG_DIR+"/"+now
+        tb_path = os.path.join(LOG_DIR, now)
 
     vae = VAE(encoder, decoder, WEIGHT_BCE, WEIGHT_SL, WEIGHT_KL, IMG_DIM)
     vae.compile(optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE))
@@ -121,8 +127,8 @@ def main():
             initial_epoch=INITIAL_EPOCH)
 
     # Save network for future use
-    encoder.save(filepath=(tb_path + "/encoder"))
-    decoder.save(filepath=(tb_path + "/decoder"))
+    encoder.save(filepath=(os.path.join(tb_path, "encoder")))
+    decoder.save(filepath=(os.path.join(tb_path, "decoder")))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -138,6 +144,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--valSplit', type=float, default=0.15)
     parser.add_argument('--epochStart', type=int, default=0)
+    parser.add_argument('--outputPreprocessPath', type=str, default=None)
 
     args = parser.parse_args()
     print(args)
