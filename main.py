@@ -130,7 +130,7 @@ def main():
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=(tb_path), histogram_freq=10)
 
     # EarlyStopping
-    earling_stopping_callback = tf.keras.callbacks.EarlyStopping(
+    early_stopping_callback = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss',
         min_delta=1E-3,
         patience=8,
@@ -161,7 +161,7 @@ if __name__ == '__main__':
     parser.add_argument('--imgDim', type=int, default=128)
     parser.add_argument('--imgCh', type=int, default=3)
     parser.add_argument('--miniBatch', type=int, default=64)
-    parser.add_argument('--epochs', type=int, default=10000)
+    parser.add_argument('--epochs', type=int, default=200)
     parser.add_argument('--latentDim', type=int, default=32)
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--valSplit', type=float, default=0.15)
