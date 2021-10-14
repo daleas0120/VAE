@@ -147,6 +147,12 @@ def style_loss(style, combination, img_nrows, img_ncols):
     return tf.reduce_sum(tf.square(S - C)) / (4.0 * (channels ** 2) * (size ** 2))
 
 
+def reconstruction_error(img_tensor, reconstruction_tensor):
+    return tf.reduce_mean(tf.math.abs(
+        keras.losses.binary_crossentropy(img_tensor, reconstruction_tensor)
+    ))
+    
+
 def customLoss(data, featuresOG, features, IMG_DIM):
 
     content_weight = IMG_DIM*IMG_DIM
@@ -160,7 +166,7 @@ def customLoss(data, featuresOG, features, IMG_DIM):
     d = tf.cast(data, dtype=tf.float32)
 
     # Get content/reconstruction loss
-    content_loss = tf.reduce_mean(tf.math.abs(keras.losses.binary_crossentropy(d, reconstruction)))
+    content_loss = reconstruction_error(d, reconstruction)
     content_loss *= content_weight
 
     # Get style losses
