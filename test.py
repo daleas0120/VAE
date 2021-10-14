@@ -8,6 +8,7 @@ import argparse
 import cv2
 import os
 from datetime import datetime
+import tqdm
 
 import numpy as np
 import pandas as pd
@@ -38,20 +39,23 @@ def main():
     """
     ### Load Model
     """
-    encoder = keras.models.load_model(os.path.join(PATH_TO_ENCODER, "encoder"))
+    # Note: set 'compile' to False to avoid compile, which is required for training but not inference
+    encoder = keras.models.load_model(os.path.join(PATH_TO_ENCODER, "encoder"), compile=False)
     encoder.summary()
     encoder.compile()
 
-    decoder = keras.models.load_model(os.path.join(PATH_TO_DECODER, "decoder"))
+    decoder = keras.models.load_model(os.path.join(PATH_TO_DECODER, "decoder"), compile=False)
     decoder.summary()
     decoder.compile()
 
     """
     ## Import Training Data
     """
+    print('Loading data')
     dataset = RGB_Dataset()
     imgs, labels, orig_list = dataset.load_rgb(IMG_DIM, IMG_CH, groundTruthFile=GT_FILE)
 
+    print('Normalizing data')
     normalised_input = (imgs) / np.max(imgs)
     imgs = normalised_input
 
@@ -77,7 +81,7 @@ def main():
     z_log_var_list = []
     z_list = []
 
-    for img in imgs:
+    for img in tqdm.tqdm(imgs, desc='processing latent space'):
         img = np.expand_dims(img, axis=0)
         _, _, _, _, _, z_mean, z_log_var, z = encoder.predict(img) # num of outputs must match num of outputs from network
         z_mean_list.append(np.array(z_mean))
