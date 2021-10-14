@@ -14,9 +14,6 @@
 import argparse
 import sys
 import os
-#cwd = os.path.abspath(os.path.dirname( __file__ ))
-#sys.path.append(cwd)
-#print('CWD: '+cwd)
 
 """
 ## Setup
