@@ -118,13 +118,35 @@ def main():
         now = "{:%Y%m%dT%H%M}".format(dt.now())
         tb_path = os.path.join(LOG_DIR, now)
 
+    # VAE Instantiation
     vae = VAE(encoder, decoder, WEIGHT_BCE, WEIGHT_SL, WEIGHT_KL, IMG_DIM)
+
+    # Model Compile
     vae.compile(optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE))
+
+    # Callbacks
+
+    # Tensorboard
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=(tb_path), histogram_freq=10)
 
-    vae.fit(imgs, epochs=EPOCHS, batch_size=MINI_BATCH, callbacks=[tensorboard_callback],
-            use_multiprocessing=True, validation_split=VALIDATION_SPLIT, validation_steps=val_steps,
-            initial_epoch=INITIAL_EPOCH)
+    # EarlyStopping
+    early_stopping_callback = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss',
+        min_delta=1E-3,
+        patience=8,
+        verbose=True,
+        mode='auto',
+        restore_best_weights=False
+    )
+
+    # Allow early-terminate by CTRL+C
+    try:
+        # Execute Fitting
+        vae.fit(imgs, epochs=EPOCHS, batch_size=MINI_BATCH, callbacks=[tensorboard_callback, early_stopping_callback],
+                use_multiprocessing=True, validation_split=VALIDATION_SPLIT, validation_steps=val_steps,
+                initial_epoch=INITIAL_EPOCH)
+    except KeyboardInterrupt:
+        print('Terminating training')
 
     # Save network for future use
     encoder.save(filepath=(os.path.join(tb_path, "encoder")))
@@ -139,7 +161,7 @@ if __name__ == '__main__':
     parser.add_argument('--imgDim', type=int, default=128)
     parser.add_argument('--imgCh', type=int, default=3)
     parser.add_argument('--miniBatch', type=int, default=64)
-    parser.add_argument('--epochs', type=int, default=10000)
+    parser.add_argument('--epochs', type=int, default=200)
     parser.add_argument('--latentDim', type=int, default=32)
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--valSplit', type=float, default=0.15)

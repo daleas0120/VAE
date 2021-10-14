@@ -85,33 +85,42 @@ class RGB_Dataset(ut.Dataset):
         # Add images
 
         for idx,a in tqdm.tqdm(enumerate(annotations), desc='Loading Images', total=len(annotations)):
+            try:
+                # Load img set into memory.  This is only manageable since the dataset is tiny.
+                image = np.array(skimage.io.imread(a['img_path']))
 
-            # Load img set into memory.  This is only manageable since the dataset is tiny.
-            image = np.array(skimage.io.imread(a['img_path']))
+                if IMG_CH > 1:
+                    if len(image.shape) == 2:
+                        from skimage.color import gray2rgb
+                        image = gray2rgb(image)
 
-            height, width = image.shape[:2]
 
-            if (height != IMG_DIM) or (width != IMG_DIM):
-                image = sk.transform.resize(image[:, :, :IMG_CH], (IMG_DIM, IMG_DIM, IMG_CH))
-
-            if a['z_filename'] != 'None':
-                z_image = np.array(skimage.io.imread(a['z_img_path']))
-
-                height, width = z_image.shape[:2]
+                height, width = image.shape[:2]
 
                 if (height != IMG_DIM) or (width != IMG_DIM):
-                    z_image = sk.transform.resize(z_image[:, :, 1], (IMG_DIM, IMG_DIM, 1))
+                        image = sk.transform.resize(image[:, :, :IMG_CH], (IMG_DIM, IMG_DIM, IMG_CH))
 
-                image = np.dstack((image, z_image))
+                if a['z_filename'] != 'None':
+                    z_image = np.array(skimage.io.imread(a['z_img_path']))
 
-            # Write out the preprocessed image
-            if output_preprocess_path is not None:
-                skimage.io.imsave(os.path.join(output_preprocess_path, a['filename']), image)
+                    height, width = z_image.shape[:2]
 
-            labels.append([a['Class'], a['DataType']])
-            imgs.append(image)
+                    if (height != IMG_DIM) or (width != IMG_DIM):
+                        z_image = sk.transform.resize(z_image[:, :, 1], (IMG_DIM, IMG_DIM, 1))
 
-            time.sleep(0.1)
+                    image = np.dstack((image, z_image))
+
+                # Write out the preprocessed image
+                if output_preprocess_path is not None:
+                    skimage.io.imsave(os.path.join(output_preprocess_path, a['filename']), image)
+
+                labels.append([a['Class'], a['DataType']])
+                imgs.append(image)
+
+            #time.sleep(0.1)
+            except:
+                print(a['img_path'])
+                raise
 
         return np.asarray(imgs), labels, annotations
 
