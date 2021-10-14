@@ -27,8 +27,7 @@ class RGB_Dataset(ut.Dataset):
         imgs = []
 
         if dataset_dir == None and groundTruthFile == None:
-            print("ERROR: No Data Found")
-            return
+            raise ValueError("ERROR: No Data Found")
 
         if groundTruthFile is None:
             print("No GroundTruthFile specified")
