@@ -69,8 +69,7 @@ class RGB_Dataset(ut.Dataset):
             annotations, dataset_dir = parse_txt.load_csv(datafile)
 
         else:
-            print("ERROR: GroundTruthFile type is not .txt or .json")
-            return
+            raise IOError("ERROR: GroundTruthFile type is not .txt or .json")
 
         # Create output directory for preprocessed images
 
