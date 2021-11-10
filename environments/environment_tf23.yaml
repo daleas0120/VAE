@@ -21,3 +21,4 @@ dependencies:
     - tensorflow-gpu>=2.3,< 2.4
     - tqdm
     - nose
+    

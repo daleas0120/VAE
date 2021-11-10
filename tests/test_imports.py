@@ -23,3 +23,4 @@ class TestImports(unittest.TestCase):
     def test_import_vae_module(self):
         from VAE import VAE
         self.assertIsNotNone(VAE)
+        
