@@ -10,7 +10,27 @@ from VAE.utils.VAE_utils import style_loss
 """
 
 class VAE(keras.Model):
+    """
+    Variational AutoeEncoder class, subclassed from keras.Model
+
+    :param encoder: A handle to the Encoder model
+    :type encoder: keras.Model
+    :param decoder: A handle to the Decoder model
+    :type decoder: keras.Model
+    :param content_weight: Weight applied to Binary Cross-Entropy Reconstruction Loss
+    :type content_weight: float
+    :param style_weight: Weight applied to the Style Losss
+    :type style_weight: float
+    :param kl_weight: Weight applied to the KL-Divergence Loss of the latent vector
+    :type kl_weight: float
+    :param img_dim: Single square dimension of input images
+    :type img_dim: int
+    :param **kwargs: Arguments for keras.Model
+    """
     def __init__(self, encoder, decoder, content_weight, style_weight, kl_weight, img_dim, **kwargs):
+        """
+        Constructor Method
+        """
         super(VAE, self).__init__(**kwargs)
         self.encoder = encoder
         self.decoder = decoder
@@ -21,6 +41,12 @@ class VAE(keras.Model):
 
 
     def train_step(self, data):
+        """
+        Training step for TensorFlow model updates
+
+        :param data: Input data (x,y) of images and labels
+        :type data: tuple
+        """
         if isinstance(data, tuple):
             data = data[0]
         with tf.GradientTape() as tape:
@@ -74,6 +100,12 @@ class VAE(keras.Model):
 
 
     def test_step(self, data):
+        """
+        Testing step for TensorFlow model updates
+
+        :param data: Input data (x,y) of images and labels
+        :type data: tuple
+        """
         if isinstance(data, tuple):
             data = data[0]
 
