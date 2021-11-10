@@ -45,8 +45,11 @@ def main():
     LOG_DIR = args.logDir
     OUTPUT_PREPROCESS_PATH = args.outputPreprocessPath
 
-    WEIGHT_SL = 1e7
-    WEIGHT_KL = -0.5
+    EARLY_STOPPING_FLAG = args.earlyStopping
+    EARLY_STOPPING_PATIENCE = args.earlyStoppingPatience
+
+    WEIGHT_SL = args.styleLoss
+    WEIGHT_KL = args.klLoss
     WEIGHT_BCE = IMG_DIM*IMG_DIM
 
     if LOG_DIR==None:
@@ -65,6 +68,7 @@ def main():
         encoder = keras.models.load_model(os.path.join(PATH_TO_ENCODER, "encoder"))
     else:
         encoder = VAE_arch.encoder_3conv7c(IMG_DIM, IMG_CH, LATENT_DIM)
+        #encoder = VAE_arch.encoder_3conv7d(IMG_DIM, IMG_CH, LATENT_DIM)
 
     encoder.summary()
 
@@ -124,24 +128,35 @@ def main():
     # Callbacks
 
     # Tensorboard
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=(tb_path), histogram_freq=10)
+    callbacks = [tf.keras.callbacks.TensorBoard(
+        log_dir=(tb_path), 
+        histogram_freq=10,
+    )]
 
     # EarlyStopping
-    early_stopping_callback = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss',
-        min_delta=1E-3,
-        patience=8,
-        verbose=True,
-        mode='auto',
-        restore_best_weights=False
-    )
+    if EARLY_STOPPING_FLAG:
+        callbacks.append(tf.keras.callbacks.EarlyStopping(
+            monitor='val_loss',
+            min_delta=1E-3,
+            patience=EARLY_STOPPING_PATIENCE,
+            verbose=True,
+            mode='auto',
+            restore_best_weights=False
+        ))
 
     # Allow early-terminate by CTRL+C
     try:
         # Execute Fitting
-        vae.fit(imgs, epochs=EPOCHS, batch_size=MINI_BATCH, callbacks=[tensorboard_callback, early_stopping_callback],
-                use_multiprocessing=True, validation_split=VALIDATION_SPLIT, validation_steps=val_steps,
-                initial_epoch=INITIAL_EPOCH)
+        vae.fit(
+            imgs, 
+            epochs=EPOCHS, 
+            batch_size=MINI_BATCH, 
+            callbacks=callbacks,
+            use_multiprocessing=True, 
+            validation_split=VALIDATION_SPLIT, 
+            validation_steps=val_steps,
+            initial_epoch=INITIAL_EPOCH
+        )
     except KeyboardInterrupt:
         print('Terminating training')
 
@@ -154,16 +169,20 @@ if __name__ == '__main__':
     parser.add_argument('--labels', type=str, default = '.')
     parser.add_argument('--encoderPath', type=str, default=None)
     parser.add_argument('--decoderPath', type=str, default=None)
-    parser.add_argument('--logDir', type=str, default=None)
+    parser.add_argument('--logDir', type=str, default=os.path.join('logs', 'fit'))
     parser.add_argument('--imgDim', type=int, default=128)
     parser.add_argument('--imgCh', type=int, default=3)
     parser.add_argument('--miniBatch', type=int, default=64)
-    parser.add_argument('--epochs', type=int, default=200)
+    parser.add_argument('--epochs', type=int, default=1000)
     parser.add_argument('--latentDim', type=int, default=32)
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--valSplit', type=float, default=0.15)
     parser.add_argument('--epochStart', type=int, default=0)
     parser.add_argument('--outputPreprocessPath', type=str, default=None)
+    parser.add_argument('--earlyStopping', action='store_true')
+    parser.add_argument('--earlyStoppingPatience', type=int, default=8)
+    parser.add_argument('--styleLoss', type=float, default=1e7)
+    parser.add_argument('--klLoss', type=float, default=-0.5)
 
     args = parser.parse_args()
     print(args)
