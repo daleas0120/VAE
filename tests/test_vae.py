@@ -73,8 +73,8 @@ class TestVAE(unittest.TestCase):
         self.assertIn('kl_loss', cost)
         self.assertIn('style_loss', cost)
 
-        expected_loss = 9542534430720.0
-        expected_reconstruction_loss = 312102.59375
+        expected_loss = 9542535479296.0
+        expected_reconstruction_loss = 901992.375
         expected_kl_loss = 1919598.0
         expected_style_loss = 9542532333568.0
 
@@ -84,7 +84,7 @@ class TestVAE(unittest.TestCase):
         print(f"KL Loss: {cost['kl_loss']}")
         print(f"Style Loss: {cost['style_loss']}")
 
-        self.assertAlmostEqual(expected_loss, cost['loss'].numpy())
-        self.assertAlmostEqual(expected_reconstruction_loss, cost['reconstruction_loss'].numpy(), 3)
-        self.assertAlmostEqual(expected_kl_loss, cost['kl_loss'].numpy(), 3)
-        self.assertAlmostEqual(expected_style_loss, cost['style_loss'].numpy(), 3)
+        self.assertAlmostEqual(expected_loss, tf.cast(cost['loss'], tf.float32))
+        self.assertAlmostEqual(expected_reconstruction_loss, tf.cast(cost['reconstruction_loss'], tf.float32), 3)
+        self.assertAlmostEqual(expected_kl_loss, tf.cast(cost['kl_loss'], tf.float32), 3)
+        self.assertAlmostEqual(expected_style_loss, tf.cast(cost['style_loss'], tf.float32), 3)

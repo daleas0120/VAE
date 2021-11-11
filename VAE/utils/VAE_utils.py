@@ -139,7 +139,7 @@ def gram_matrix(x):
 # feature maps from the style reference image
 # and from the generated image
 
-def style_loss(style, combination, img_nrows, img_ncols):
+def get_style_loss(style, combination, img_nrows, img_ncols):
     S = gram_matrix(style)
     C = gram_matrix(combination)
     channels = 3
@@ -147,10 +147,15 @@ def style_loss(style, combination, img_nrows, img_ncols):
     return tf.reduce_sum(tf.square(S - C)) / (4.0 * (channels ** 2) * (size ** 2))
 
 
-def reconstruction_error(img_tensor, reconstruction_tensor):
+def get_reconstruction_error(img_tensor, reconstruction_tensor):
     return tf.reduce_mean(tf.math.abs(
         keras.losses.binary_crossentropy(img_tensor, reconstruction_tensor)
     ))
+
+def get_kl_loss(z_mean, z_log_var):
+    return tf.reduce_mean(
+        1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var)
+    )
     
 
 def customLoss(data, featuresOG, features, IMG_DIM):
@@ -166,20 +171,20 @@ def customLoss(data, featuresOG, features, IMG_DIM):
     d = tf.cast(data, dtype=tf.float32)
 
     # Get content/reconstruction loss
-    content_loss = reconstruction_error(d, reconstruction)
+    content_loss = get_reconstruction_error(d, reconstruction)
     content_loss *= content_weight
 
     # Get style losses
 
     # Encoded vs Decoded Img Activations in the Encoder
-    sl1 = style_loss(featuresOG['conv1encoder'], features['conv1encoder'], IMG_DIM, IMG_DIM)
-    sl2 = style_loss(featuresOG['conv2encoder'], features['conv2encoder'], IMG_DIM, IMG_DIM)
-    sl3 = style_loss(featuresOG['conv3encoder'], features['conv3encoder'], IMG_DIM, IMG_DIM)
+    sl1 = get_style_loss(featuresOG['conv1encoder'], features['conv1encoder'], IMG_DIM, IMG_DIM)
+    sl2 = get_style_loss(featuresOG['conv2encoder'], features['conv2encoder'], IMG_DIM, IMG_DIM)
+    sl3 = get_style_loss(featuresOG['conv3encoder'], features['conv3encoder'], IMG_DIM, IMG_DIM)
 
     # Encoder vs Decoder Activations
-    sl4 = style_loss(featuresOG['conv1encoder'], featuresOG['conv2decoder'], IMG_DIM, IMG_DIM)
-    sl5 = style_loss(featuresOG['conv2encoder'], featuresOG['conv3decoder'], IMG_DIM, IMG_DIM)
-    sl6 = style_loss(featuresOG['conv3encoder'], featuresOG['reshape_1'], IMG_DIM, IMG_DIM)
+    sl4 = get_style_loss(featuresOG['conv1encoder'], featuresOG['conv2decoder'], IMG_DIM, IMG_DIM)
+    sl5 = get_style_loss(featuresOG['conv2encoder'], featuresOG['conv3decoder'], IMG_DIM, IMG_DIM)
+    sl6 = get_style_loss(featuresOG['conv3encoder'], featuresOG['reshape_1'], IMG_DIM, IMG_DIM)
 
     sL = tf.reduce_mean((style_weight / 6) * (sl1 + sl2 + sl3 + sl4 + sl5 + sl6))
 
