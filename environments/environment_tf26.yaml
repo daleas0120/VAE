@@ -1,0 +1,22 @@
+name: tf26
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python >= 3.6, <= 3.9
+  - cudatoolkit >= 11.2
+  - cudnn >= 8.1
+  - pip
+  - pip:
+    - tensorflow>=2.6,<2.7
+    - keras>=2.6,<2.7
+    - numpy
+    - opencv-python
+    - pandas
+    - scikit-image
+    - scipy
+    - sklearn
+    - tabulate
+    - tqdm
+    - nose
+    

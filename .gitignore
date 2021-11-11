@@ -2,3 +2,7 @@ data/
 VAE.egg-info/
 Pipfile.lock
 __pycache__
+*.csv
+*.nohup
+logs/
+experiments/

@@ -10,7 +10,7 @@ import tqdm
 # For input files that begin by specifying the root data directory, a PLATFORM variable
 # can be defined for use in the load() function on line 49
 
-PLATFORM = os.path.abspath(os.path.join(os.path.dirname( __file__ ),'..'))
+PLATFORM = os.path.abspath(os.path.join(os.path.dirname( __file__ ),'..', '..'))
 
 def getClassName(n):
     """

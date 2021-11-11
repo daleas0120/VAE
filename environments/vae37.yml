@@ -18,3 +18,4 @@ dependencies:
     - tensorboard==2.5.0
     - tensorflow-gpu
     - tqdm
+    - nose

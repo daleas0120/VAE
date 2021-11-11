@@ -1,0 +1,24 @@
+name: tf23
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python >= 3.5, <= 3.8
+  - cudatoolkit >= 10.1, < 10.2
+  - cudnn >= 7.6, < 7.7
+  - pip
+  - tensorflow >= 2.3, <2.4
+  - keras >= 2.3, < 2.4
+  - pip:
+    - numpy
+    - opencv-python
+    - pandas
+    - scikit-image
+    - scipy
+    - sklearn
+    - tabulate
+    - tensorboard==2.5.0
+    - tensorflow-gpu>=2.3,< 2.4
+    - tqdm
+    - nose
+    
