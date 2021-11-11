@@ -63,9 +63,10 @@ class TestVAE(unittest.TestCase):
         tf.random.set_seed(get_seed())
 
         img = get_img()
+        img = np.asarray(img) / 255.
         vae = construct_vae()
 
-        cost = vae.get_cost(tf.expand_dims(np.asarray(img), axis=0))
+        cost = vae.get_cost(tf.expand_dims(img, axis=0))
 
         self.assertIsNotNone(cost)
         self.assertIn('loss', cost)
@@ -73,10 +74,10 @@ class TestVAE(unittest.TestCase):
         self.assertIn('kl_loss', cost)
         self.assertIn('style_loss', cost)
 
-        expected_loss = 9542535479296.0
-        expected_reconstruction_loss = 901992.375
-        expected_kl_loss = 1919598.0
-        expected_style_loss = 9542532333568.0
+        expected_loss = 12986.9140625
+        expected_reconstruction_loss = 11356.1796875
+        expected_kl_loss = 0.0009263642132282257
+        expected_style_loss = 1630.733154296875
 
         print(f'Cost: {cost}')
         print(f"Loss: {cost['loss']}")

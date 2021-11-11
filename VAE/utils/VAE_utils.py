@@ -148,9 +148,9 @@ def get_style_loss(style, combination, img_nrows, img_ncols):
 
 
 def get_reconstruction_error(img_tensor, reconstruction_tensor):
-    return tf.reduce_mean(tf.math.abs(
+    return tf.reduce_mean(
         keras.losses.binary_crossentropy(img_tensor, reconstruction_tensor)
-    ))
+    )
 
 def get_kl_loss(z_mean, z_log_var):
     return tf.reduce_mean(
