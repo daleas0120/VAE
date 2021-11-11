@@ -23,7 +23,6 @@ from datetime import datetime as dt
 import tensorflow as tf
 from tensorflow import keras
 from VAE.utils.VAE_utils import RGB_Dataset
-from VAE.utils.VAE_utils import style_loss
 from VAE.include import VAE_arch
 from VAE import VAE
 
