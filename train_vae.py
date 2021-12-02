@@ -181,7 +181,7 @@ if __name__ == '__main__':
     parser.add_argument('--earlyStopping', action='store_true')
     parser.add_argument('--earlyStoppingPatience', type=int, default=8)
     parser.add_argument('--styleLoss', type=float, default=1e7)
-    parser.add_argument('--klLoss', type=float, default=-0.5)
+    parser.add_argument('--klLoss', type=float, default=0.5)
 
     args = parser.parse_args()
     print(args)

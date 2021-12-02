@@ -153,7 +153,7 @@ def get_reconstruction_error(img_tensor, reconstruction_tensor):
     )
 
 def get_kl_loss(z_mean, z_log_var):
-    return tf.reduce_mean(
+    return -tf.reduce_mean(
         1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var)
     )
     

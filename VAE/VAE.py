@@ -52,13 +52,13 @@ class VAE(keras.Model):
 
         # Reconstruction loss is BCE
         reconstruction_loss = get_reconstruction_error(data, reconstruction)
-        reconstruction_loss *= self.content_weight
+        weighted_reconstruction_loss = reconstruction_loss * self.content_weight
 
         # Latent Space Loss us Kullback-Leibler Divergence
         #kl_loss = 1 + z_log_var_0 - tf.square(z_mean_0) - tf.exp(z_log_var_0)
         #kl_loss = tf.reduce_mean(kl_loss)
         kl_loss = get_kl_loss(z_mean_0, z_log_var_0)
-        kl_loss *= self.kl_weight
+        weighted_kl_loss = kl_loss * self.kl_weight
 
         # Style loss is gram matrix comparison of matched encoder and decoder layers for the
         # original input image and the reconstructed image
@@ -73,15 +73,16 @@ class VAE(keras.Model):
         sl5 = get_style_loss(ec2_0, dc3, self.img_dim, self.img_dim)
         sl6 = get_style_loss(ec3_0, reshape, self.img_dim, self.img_dim)
 
-        sL = tf.reduce_mean((self.style_weight / 6) * (sl1 + sl2 + sl3 + sl4 + sl5 + sl6))
+        style_loss = tf.reduce_mean((sl1 + sl2 + sl3 + sl4 + sl5 + sl6) / 6.)
+        weighted_style_loss = style_loss * self.style_weight
 
-        total_loss = reconstruction_loss + kl_loss + sL
+        total_loss = weighted_reconstruction_loss + weighted_kl_loss + weighted_style_loss
 
         return {
             "loss": total_loss,
             "reconstruction_loss": reconstruction_loss,
             "kl_loss": kl_loss,
-            "style_loss": sL,
+            "style_loss": style_loss,
         }
 
 

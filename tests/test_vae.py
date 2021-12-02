@@ -78,9 +78,9 @@ class TestVAE(unittest.TestCase):
         self.assertIn('style_loss', cost)
 
         expected_loss = 12986.9140625
-        expected_reconstruction_loss = 11356.1796875
-        expected_kl_loss = 0.0009263642132282257
-        expected_style_loss = 1630.733154296875
+        expected_reconstruction_loss = 0.6931264400482178
+        expected_kl_loss = 0.001852748915553093
+        expected_style_loss = 0.00016307331679854542
 
         print(f'Cost: {cost}')
         print(f"Loss: {cost['loss']}")
