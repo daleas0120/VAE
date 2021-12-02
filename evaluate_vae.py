@@ -103,6 +103,7 @@ def main():
 
     # Make pandas data frame of results (assuming 32D Latent space)
     dataFrameName = tb_path + '/' + now + 'dataFrame.csv'
+    # TODO: Column name needs to be automated - wmb
     df = pd.DataFrame(z_results, columns=['z0', 'z1', 'z2', 'z3', 'z4', 'z5', 'z6', 'z7',
     'z8', 'z9', 'z10', 'z11', 'z12', 'z13', 'z14', 'z15',
     'z16', 'z17', 'z18', 'z19', 'z20', 'z21', 'z22', 'z23',
@@ -115,6 +116,7 @@ def main():
     ## Display how the latent space clusters different digit classes
     """
 
+    # TODO: Move these functions to their own file, or use existing code
     def plot_label_clusters(encoder, decoder, data, labels, tb_path):
         print("Plot first 3 Latent Space Dim")
         # display a 2D plot of the digit classes in the latent space
