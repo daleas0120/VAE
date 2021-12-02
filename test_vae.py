@@ -19,7 +19,7 @@ import tensorflow as tf
 from tensorflow import keras
 
 from VAE.utils import writeResults
-from VAE.utils.VAE_utils import RGB_Dataset
+from VAE.utils.VAE_utils import RGB_Dataset, get_reconstruction_error
 
 
 print(tf.__version__)
@@ -131,12 +131,12 @@ def main():
     # plot_label_clusters(encoder, decoder, imgs, labels, tb_path)
 
     def getImageLoss(gt_img, img):
-        reconstruction_loss = tf.reduce_mean(
-            keras.losses.binary_crossentropy(gt_img[None, :, :, :], img[None, :, :, :])
-        )
-        #reconstruction_loss *= IMG_DIM * IMG_DIM
+        #reconstruction_loss = tf.reduce_mean(
+        #    keras.losses.binary_crossentropy(gt_img[None, :, :, :], img[None, :, :, :])
+        #)
+        ##reconstruction_loss *= IMG_DIM * IMG_DIM
 
-        return reconstruction_loss
+        return get_reconstruction_error(gt_img[None, :, :, :], img[None, :, :, :])
 
     def generate_img_set(decoder, z, filepath, orig_list, orig_imgs, IMG_DIM, IMG_CH):
         print("Generating Latent Space Image Set")
