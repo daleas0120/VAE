@@ -5,6 +5,7 @@
 """
 
 import argparse
+from json import decoder
 import cv2
 import os
 from datetime import datetime
@@ -24,7 +25,110 @@ from VAE.utils.VAE_utils import RGB_Dataset, get_reconstruction_error
 
 print(tf.__version__)
 
-def main():
+def load_encoder(encoder_path:str):
+    assert(os.path.exists(encoder_path))
+    assert(os.path.isdir(encoder_path))
+
+    # Note: set 'compile' to False to avoid compile, which is required for training but not inference
+    encoder = keras.models.load_model(os.path.join(encoder_path, "encoder"), compile=False)
+    assert(encoder is not None)
+
+    encoder.summary()
+    encoder.compile()
+    return encoder
+
+
+def load_decoder(decoder_path: str):
+    assert(os.path.exists(decoder_path))
+    assert(os.path.isdir(decoder_path))
+
+    decoder = keras.models.load_model(os.path.join(decoder_path, "decoder"), compile=False)
+    assert(decoder is not None)
+
+    decoder.summary()
+    decoder.compile()
+    return decoder
+
+
+def load_model(encoder_path: str, decoder_path: str) -> tuple:
+
+    encoder = load_encoder(encoder_path)
+    decoder = load_decoder(decoder_path)
+    return encoder, decoder
+
+
+def normalize_images(imgs:np.ndarray) -> np.ndarray:
+    """
+    Normalizes a vector of images by its maxed value
+    """
+    return imgs / np.max(imgs)
+
+
+def load_data(img_dim:int, channels:int, label_filepath: str) -> tuple:
+    
+    print('Loading data')
+    dataset = RGB_Dataset()
+    imgs, labels, orig_list = dataset.load_rgb(img_dim, channels, groundTruthFile=label_filepath)
+
+    print('Normalizing data')
+    normalised_input = normalize_images(imgs)
+
+    return normalised_input, labels, orig_list
+
+
+def generate_latent_space(encoder, imgs:np.ndarray) -> tuple:
+    """
+    Generates latent space from input list of images and encoder
+    """
+
+    assert(encoder is not None)
+    assert(len(imgs) > 0)
+
+    z_mean_list = []
+    z_log_var_list = []
+    z_list = []
+
+    for img in tqdm.tqdm(imgs, desc='processing latent space'):
+        img = np.expand_dims(img, axis=0)
+        #TODO: Handle custom architectures -wmb
+        _, _, _, _, _, z_mean, z_log_var, z = encoder.predict(img) # num of outputs must match num of outputs from network
+        z_mean_list.append(np.array(z_mean))
+        z_log_var_list.append(np.array(z_log_var))
+        z_list.append(np.array(z))
+
+    z_mean_results = np.squeeze(np.array(z_mean_list))
+    z_log_var_results = np.squeeze(np.array((z_log_var_list)))
+    z_results = np.squeeze(np.array(z_list))
+    
+    return z_mean_results, z_log_var_results, z_results
+
+
+def write_latent_space(tb_path, now, z_mean_results, z_log_var_results, z_results, labels, orig_list) -> None:
+    # save output to txt files in log
+    print('Saving to text files.')
+    
+    prefix = os.path.abspath(os.path.join(tb_path, now))
+    meta_path = os.path.abspath(os.path.join(tb_path, 'metadata.tsv'))
+
+    np.savetxt((prefix +'_z_mean.txt'), z_mean_results, delimiter=',')
+    np.savetxt((prefix +'_z_log_var.txt'), z_log_var_results, delimiter=',')
+    np.savetxt((prefix +'z.txt'), z_results, delimiter=',')
+    np.savetxt((meta_path), labels, delimiter='\t', fmt='%s')
+    np.savetxt((prefix +'_z.tsv'), z_results, delimiter='\t', fmt='%s')
+
+    # Make pandas data frame of results (assuming 32D Latent space)
+    dataFrameName = prefix + 'dataFrame.csv'
+    # TODO: Column name needs to be automated - wmb
+    df = pd.DataFrame(z_results, columns=['z0', 'z1', 'z2', 'z3', 'z4', 'z5', 'z6', 'z7',
+    'z8', 'z9', 'z10', 'z11', 'z12', 'z13', 'z14', 'z15',
+    'z16', 'z17', 'z18', 'z19', 'z20', 'z21', 'z22', 'z23',
+    'z24', 'z25', 'z26', 'z27', 'z28', 'z29', 'z30', 'z31'])
+    df2 = pd.DataFrame(orig_list)
+    df = pd.concat([df2, df], axis=1)
+    df.to_csv(dataFrameName, index=True)
+
+
+def main(args):
     """
     Main Function
     """
@@ -39,25 +143,12 @@ def main():
     """
     ### Load Model
     """
-    # Note: set 'compile' to False to avoid compile, which is required for training but not inference
-    encoder = keras.models.load_model(os.path.join(PATH_TO_ENCODER, "encoder"), compile=False)
-    encoder.summary()
-    encoder.compile()
-
-    decoder = keras.models.load_model(os.path.join(PATH_TO_DECODER, "decoder"), compile=False)
-    decoder.summary()
-    decoder.compile()
-
+    encoder, decoder = load_model(PATH_TO_ENCODER, PATH_TO_DECODER)
+    
     """
     ## Import Training Data
     """
-    print('Loading data')
-    dataset = RGB_Dataset()
-    imgs, labels, orig_list = dataset.load_rgb(IMG_DIM, IMG_CH, groundTruthFile=GT_FILE)
-
-    print('Normalizing data')
-    normalised_input = (imgs) / np.max(imgs)
-    imgs = normalised_input
+    imgs, labels, orig_list = load_data(IMG_DIM, IMG_CH, GT_FILE)
 
     now = "{:%Y%m%dT%H%M}".format(datetime.now())
 
@@ -77,40 +168,9 @@ def main():
     """
     ## Get latent space output from network
     """
-    z_mean_list = []
-    z_log_var_list = []
-    z_list = []
+    z_mean_results, z_log_var_results, z_results = generate_latent_space(encoder, imgs)
 
-    for img in tqdm.tqdm(imgs, desc='processing latent space'):
-        img = np.expand_dims(img, axis=0)
-        _, _, _, _, _, z_mean, z_log_var, z = encoder.predict(img) # num of outputs must match num of outputs from network
-        z_mean_list.append(np.array(z_mean))
-        z_log_var_list.append(np.array(z_log_var))
-        z_list.append(np.array(z))
-
-    z_mean_results = np.squeeze(np.array(z_mean_list))
-    z_log_var_results = np.squeeze(np.array((z_log_var_list)))
-    z_results = np.squeeze(np.array(z_list))
-
-    # save output to txt files in log
-    print('Saving to text files.')
-    # TODO: Joins need to be properly resolved
-    np.savetxt((tb_path + '/'+ now +'_z_mean.txt'), z_mean_results, delimiter=',')
-    np.savetxt((tb_path + '/'+ now +'_z_log_var.txt'), z_log_var_results, delimiter=',')
-    np.savetxt((tb_path + '/'+ now +'z.txt'), z_results, delimiter=',')
-    np.savetxt((tb_path + '/' +'metadata.tsv'), labels, delimiter='\t', fmt='%s')
-    np.savetxt((tb_path+'/'+now+'_z.tsv'), z_results, delimiter='\t', fmt='%s')
-
-    # Make pandas data frame of results (assuming 32D Latent space)
-    dataFrameName = tb_path + '/' + now + 'dataFrame.csv'
-    # TODO: Column name needs to be automated - wmb
-    df = pd.DataFrame(z_results, columns=['z0', 'z1', 'z2', 'z3', 'z4', 'z5', 'z6', 'z7',
-    'z8', 'z9', 'z10', 'z11', 'z12', 'z13', 'z14', 'z15',
-    'z16', 'z17', 'z18', 'z19', 'z20', 'z21', 'z22', 'z23',
-    'z24', 'z25', 'z26', 'z27', 'z28', 'z29', 'z30', 'z31'])
-    df2 = pd.DataFrame(orig_list)
-    df = pd.concat([df2, df], axis=1)
-    df.to_csv(dataFrameName, index=True)
+    write_latent_space(tb_path, now, z_mean_results, z_log_var_results, z_results, labels, orig_list)
 
     """
     ## Display how the latent space clusters different digit classes
@@ -130,20 +190,15 @@ def main():
         plt.savefig(tb_path+"/scatter.png", dpi=300)
         plt.show()
 
+    # TODO: This can be thrown in a flag for plotting or its own script -wmb
     # plot_label_clusters(encoder, decoder, imgs, labels, tb_path)
-
-    def getImageLoss(gt_img, img):
-        #reconstruction_loss = tf.reduce_mean(
-        #    keras.losses.binary_crossentropy(gt_img[None, :, :, :], img[None, :, :, :])
-        #)
-        ##reconstruction_loss *= IMG_DIM * IMG_DIM
-
-        return get_reconstruction_error(gt_img[None, :, :, :], img[None, :, :, :])
 
     def generate_img_set(decoder, z, filepath, orig_list, orig_imgs, IMG_DIM, IMG_CH):
         print("Generating Latent Space Image Set")
         loss_per_img = []
+        #TODO: Can use a join here - wmb
         path = filepath + "/generatedImgs/"
+        #TODO: Path shouldn't exist, but check is still necessary - wmb
         os.mkdir(path)
         num_imgs = len(orig_list)
         for i in range(num_imgs):
@@ -159,13 +214,15 @@ def main():
             # plt.show()
 
             #img = decoder(np.array([z[i]]))
+            #TODO: Decoder is hardcoded for its outputs - wmb
             _, _, _, _, img = decoder(np.array([z[i]]))
             img = np.array(img)
             img = img[0, :, :, :]
-            reconstruction_loss = getImageLoss(gt_img, img)
+            reconstruction_loss = get_reconstruction_error(gt_img[None, :, :, :], img[None, :, :, :])
 
             # ---Format to write out in 128x128 img format with openCV---#
 
+            #TODO: Probably not all that important, but math on 255. float and round to integer - wmb
             img_rgb = 255.999 * img
             img_rgb = np.array(img_rgb, dtype='float32').astype('uint8')
             img_bgr = np.dstack((img_rgb[:, :, 2], img_rgb[:, :, 1], img_rgb[:, :, 0]))
@@ -187,6 +244,8 @@ def main():
     loss_per_img = generate_img_set(decoder, z_results, tb_path, orig_list, imgs, IMG_DIM, IMG_CH)
 
     print("Saving Results to File")
+    #TODO: Writing results to file are mixed all over the place, should consider placing them in this module - wmb
+    #TODO: Write a single function that takes a dictionary and outputs all results to their respective files - wmb
     writeResults.simpleResults(tb_path, now+"results.csv", orig_list, loss_per_img)
 
     """
@@ -200,6 +259,7 @@ def main():
         digit_size = IMG_DIM
         numImgSteps = 100
 
+        #TODO: sorted is a python function, and actually can be used here instead of copy + sort - wmb
         sorted = copy.copy(loss_per_img)
         sorted.sort()
 
@@ -242,6 +302,7 @@ def main():
             fig_name = tb_path + "/latentSpace_x" + str(idx+1) + "_to_" + str(0) + "_" + str(n) + ".png"
             z_vector = z_vector1 + n * z_Step
 
+            #TODO: older code that expects single output from decoder - wmb
             x_decoded = decoder.predict(np.array([[z_vector]]))  # this is the image constructed by the network
             digit = x_decoded[4].reshape(digit_size, digit_size, IMG_CH)  # formatted for putting in the figure
 
@@ -252,6 +313,7 @@ def main():
             plt.show()
             plt.close()
 
+            #TODO: Code is repeated here, throw in a function - wmb
             img_rgb = 255.999 * digit
             img_rgb = np.array(img_rgb, dtype='float32').astype('uint8')
             img_bgr = np.dstack((img_rgb[:, :, 2], img_rgb[:, :, 1], img_rgb[:, :, 0]))
@@ -281,4 +343,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
 
-    main()
+    main(args)
