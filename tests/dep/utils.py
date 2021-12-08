@@ -62,7 +62,6 @@ def construct_vae():
         decoder.save(filepath=get_decoder_path())
 
     return vae
-_ = construct_vae()
 
 ## Mock Image
 
