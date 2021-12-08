@@ -61,6 +61,7 @@ def normalize_images(imgs:np.ndarray) -> np.ndarray:
     """
     Normalizes a vector of images by its maxed value
     """
+    # TODO: This normalizes all images by the max pixel among all images (global)
     return imgs / np.max(imgs)
 
 

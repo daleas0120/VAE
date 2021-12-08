@@ -19,6 +19,10 @@ from VAE.utils import utils as ut
 from VAE.utils import custom_parse_rgb as parse_txt
 
 
+def load_image_as_array(img_path: str) -> np.ndarray:
+    assert(os.path.exists(img_path))
+    return np.array(skimage.io.imread(img_path))
+
 class RGB_Dataset(ut.Dataset):
 
     def load_rgb(self, IMG_DIM, IMG_CH, dataset_dir=None, groundTruthFile=None, output_preprocess_path=None):
@@ -85,7 +89,7 @@ class RGB_Dataset(ut.Dataset):
         for idx,a in tqdm.tqdm(enumerate(annotations), desc='Loading Images', total=len(annotations)):
             try:
                 # Load img set into memory.  This is only manageable since the dataset is tiny.
-                image = np.array(skimage.io.imread(a['img_path']))
+                image = load_image_as_array(a['img_path'])
 
                 if IMG_CH > 1:
                     if len(image.shape) == 2:
@@ -99,7 +103,7 @@ class RGB_Dataset(ut.Dataset):
                         image = sk.transform.resize(image[:, :, :IMG_CH], (IMG_DIM, IMG_DIM, IMG_CH))
 
                 if a['z_filename'] != 'None':
-                    z_image = np.array(skimage.io.imread(a['z_img_path']))
+                    z_image = load_image_as_array(a['z_img_path'])
 
                     height, width = z_image.shape[:2]
 
