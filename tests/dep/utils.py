@@ -22,6 +22,10 @@ def get_decoder_path():
     model_path = get_model_path()
     return os.path.join(model_path, 'decoder')
 
+def get_classifier_path():
+    model_path = get_model_path()
+    return os.path.join(model_path, 'classifier')
+
 def get_seed():
     return 12345
 
@@ -38,6 +42,9 @@ def get_img_channels():
 def get_latent_dim():
     return 32
 
+def get_class_size():
+    return 5
+
 def get_weight_bce():
     img_dim = get_img_dim()
     return img_dim*img_dim
@@ -48,18 +55,24 @@ def get_weight_sl():
 def get_weight_kl():
     return -0.5
 
+def get_weight_class():
+    return 1.0
+
 def construct_vae():
-    from VAE.include.VAE_arch import encoder_3conv7c, decoder_3conv7c
+    from VAE.include.VAE_arch import encoder_3conv7c, decoder_3conv7c, latent_classifier_arch
     from VAE.VAE import VAE
     set_seed()
     encoder = encoder_3conv7c(get_img_dim(), get_img_channels(), get_latent_dim())
     decoder = decoder_3conv7c(get_latent_dim())
-    vae = VAE(encoder, decoder, get_weight_bce(), get_weight_sl(), get_weight_kl(), get_img_dim())
+    classifier = latent_classifier_arch(get_latent_dim(), get_class_size())
+    vae = VAE(encoder, decoder, classifier, get_weight_bce(), get_weight_sl(), get_weight_kl(), get_weight_class(), get_img_dim())
 
     if not os.path.exists(get_encoder_path()):
         encoder.save(filepath=get_encoder_path())
     if not os.path.exists(get_decoder_path()):
         decoder.save(filepath=get_decoder_path())
+    if not os.path.exists(get_classifier_path()):
+        classifier.save(filepath=get_classifier_path())
 
     return vae
 
@@ -73,4 +86,10 @@ def get_img():
     from PIL import Image
     img = Image.open(get_img_filename())
     return img
+
+def get_img_label():
+    return ('Plane', 'RW')
+
+def get_img_label_ones_hot():
+    return [[0, 0, 0, 1, 0]]
 

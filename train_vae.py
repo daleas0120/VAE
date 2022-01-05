@@ -26,6 +26,8 @@ from VAE.utils.VAE_utils import RGB_Dataset
 from VAE.include import VAE_arch
 from VAE import VAE
 
+from sklearn.preprocessing import LabelBinarizer
+
 print('Keras: '+keras.__version__)
 print('Tensorflow: ' + tf.__version__)
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
@@ -50,6 +52,7 @@ def main():
     WEIGHT_SL = args.styleLoss
     WEIGHT_KL = args.klLoss
     WEIGHT_BCE = IMG_DIM*IMG_DIM
+    WEIGHT_CLASSIFIER = args.classLoss
 
     if LOG_DIR==None:
         LOG_DIR=os.path.abspath(os.curdir)
@@ -108,6 +111,10 @@ def main():
     imgs = normalised_input
     print(f'Images Normalized: {np.max(imgs)}')
 
+    class_labels = [label[0] for label in labels]
+    labels_ones_hot = LabelBinarizer().fit_transform(class_labels)
+    classifier = VAE_arch.latent_classifier_arch(LATENT_DIM, len(set(class_labels)))
+
     """
     ## Train the VAE
     """
@@ -119,7 +126,7 @@ def main():
         tb_path = os.path.join(LOG_DIR, now)
 
     # VAE Instantiation
-    vae = VAE(encoder, decoder, WEIGHT_BCE, WEIGHT_SL, WEIGHT_KL, IMG_DIM)
+    vae = VAE(encoder, decoder, classifier, WEIGHT_BCE, WEIGHT_SL, WEIGHT_KL, WEIGHT_CLASSIFIER, IMG_DIM)
 
     # Model Compile
     vae.compile(optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE))
@@ -147,7 +154,9 @@ def main():
     try:
         # Execute Fitting
         vae.fit(
-            imgs, 
+            #imgs, 
+            x=imgs,
+            y=labels_ones_hot,
             epochs=EPOCHS, 
             batch_size=MINI_BATCH, 
             callbacks=callbacks,
@@ -162,6 +171,7 @@ def main():
     # Save network for future use
     encoder.save(filepath=(os.path.join(tb_path, "encoder")))
     decoder.save(filepath=(os.path.join(tb_path, "decoder")))
+    classifier.save(filepath=(os.path.join(tb_path, "classifier")))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -182,6 +192,7 @@ if __name__ == '__main__':
     parser.add_argument('--earlyStoppingPatience', type=int, default=8)
     parser.add_argument('--styleLoss', type=float, default=1e7)
     parser.add_argument('--klLoss', type=float, default=0.5)
+    parser.add_argument('--classLoss', type=float, default=1.0)
 
     args = parser.parse_args()
     print(args)

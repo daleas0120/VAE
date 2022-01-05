@@ -27,22 +27,25 @@ class VAE(keras.Model):
     :type img_dim: int
     :param **kwargs: Arguments for keras.Model
     """
-    def __init__(self, encoder, decoder, content_weight, style_weight, kl_weight, img_dim, **kwargs):
+    def __init__(self, encoder, decoder, classifier, content_weight, style_weight, kl_weight, class_weight, img_dim, **kwargs):
         """
         Constructor Method
         """
         super(VAE, self).__init__(**kwargs)
         self.encoder = encoder
         self.decoder = decoder
+        self.classifier = classifier
         self.content_weight = content_weight
         self.style_weight = style_weight
         self.kl_weight = kl_weight
+        self.class_weight = class_weight
         self.img_dim = img_dim
+        self.class_accuracy = keras.metrics.Accuracy()
 
 
-    def get_cost(self, data):
+    def get_cost(self, x, y):
         # Send the image through the encoder, return conv layer activations and latent space embedding
-        [ec1_0, ec2_0, ec3_0, _, _, z_mean_0, z_log_var_0, z_0] = self.encoder(data)
+        [ec1_0, ec2_0, ec3_0, _, _, z_mean_0, z_log_var_0, z_0] = self.encoder(x)
 
         # Decode latent space representation to obtain reconstruction image and conv layer activations
         [_, reshape, dc3, dc2, reconstruction] = self.decoder(z_0)
@@ -50,8 +53,11 @@ class VAE(keras.Model):
         # Encode the reconstruction to compare conv layer activations
         [ec1_1, ec2_1, ec3_1, _, _, _, _, _] = self.encoder(reconstruction)
 
+        # Latent Space Classifier
+        y_p = self.classifier(z_0)
+
         # Reconstruction loss is BCE
-        reconstruction_loss = get_reconstruction_error(data, reconstruction)
+        reconstruction_loss = get_reconstruction_error(x, reconstruction)
         weighted_reconstruction_loss = reconstruction_loss * self.content_weight
 
         # Latent Space Loss us Kullback-Leibler Divergence
@@ -76,13 +82,24 @@ class VAE(keras.Model):
         style_loss = tf.reduce_mean((sl1 + sl2 + sl3 + sl4 + sl5 + sl6) / 6.)
         weighted_style_loss = style_loss * self.style_weight
 
-        total_loss = weighted_reconstruction_loss + weighted_kl_loss + weighted_style_loss
+        # Latent space loss
+        class_cce = keras.losses.CategoricalCrossentropy()
+        categorical_cross_entropy = class_cce(y, y_p)
+        weighted_cce = self.class_weight * categorical_cross_entropy
+
+        # Latent space accuracy
+        self.class_accuracy.update_state(tf.math.argmax(y, axis=1), tf.math.argmax(y_p, axis=1))
+        accuracy = self.class_accuracy.result()
+
+        total_loss = weighted_reconstruction_loss + weighted_kl_loss + weighted_style_loss + weighted_cce
 
         return {
             "loss": total_loss,
             "reconstruction_loss": reconstruction_loss,
             "kl_loss": kl_loss,
             "style_loss": style_loss,
+            "accuracy": accuracy,
+            "categorical_cross_entropy": categorical_cross_entropy,
         }
 
 
@@ -93,10 +110,14 @@ class VAE(keras.Model):
         :param data: Input data (x,y) of images and labels
         :type data: tuple
         """
-        if isinstance(data, tuple):
-            data = data[0]
+        #if isinstance(data, tuple):
+        #    data = data[0]
+        assert(isinstance(data, tuple))
+        x = data[0]
+        y = data[1]
+
         with tf.GradientTape() as tape:
-            loss = self.get_cost(data)
+            loss = self.get_cost(x, y)
 
         grads = tape.gradient(loss['loss'], self.trainable_weights)
         self.optimizer.apply_gradients(zip(grads, self.trainable_weights))
@@ -111,8 +132,11 @@ class VAE(keras.Model):
         :param data: Input data (x,y) of images and labels
         :type data: tuple
         """
-        if isinstance(data, tuple):
-            data = data[0]
+        ##if isinstance(data, tuple):
+        ##    data = data[0]
+        assert(isinstance(data, tuple))
+        x = data[0]
+        y = data[1]
 
-        return self.get_cost(data)
+        return self.get_cost(x, y)
         

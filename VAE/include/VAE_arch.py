@@ -201,6 +201,27 @@ def decoder_4conv(LATENT_DIM):
     return decoder
 
 """
+## Classifier Architecture
+"""
+
+def latent_classifier_arch(latent_dim, total_classes):
+    model = keras.Sequential([
+        keras.layers.InputLayer(input_shape=(latent_dim,), name='input'),
+        layers.Dense(70, activation='relu', name='dense_0'),
+        layers.Dense(30, activation='relu', name='dense_1'),
+        layers.Dense(20, activation='relu', name='dense_2'),
+        layers.Dense(total_classes, activation='softmax', name='output'),
+    ])
+    #model.build((None, latent_dim))
+
+    #model.build()
+    #model.summary()
+    #exit()
+
+    return model
+
+
+"""
 ## Version of VAE with encoder and decoder defined together
 """
 

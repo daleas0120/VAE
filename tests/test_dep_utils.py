@@ -26,3 +26,19 @@ class TestDepUtils(unittest.TestCase):
         decoder_path = utils.get_decoder_path()
         self.assertTrue(os.path.exists(decoder_path))
         self.assertTrue(os.path.isdir(decoder_path))
+
+    def test_classifier_path(self):
+        classifier_path = utils.get_classifier_path()
+        self.assertTrue(os.path.exists(classifier_path))
+        self.assertTrue(os.path.isdir(classifier_path))
+
+    def test_img_exists(self):
+        img_filename = utils.get_img_filename()
+        self.assertTrue(os.path.exists(img_filename))
+        self.assertTrue(os.path.isfile(img_filename))
+
+    def test_img(self):
+        img = utils.get_img()
+        self.assertIsNotNone(img)
+        self.assertEqual(img.size[0], utils.get_img_dim())
+        self.assertEqual(img.size[1], utils.get_img_dim())
