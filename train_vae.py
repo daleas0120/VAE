@@ -161,14 +161,6 @@ def main():
             restore_best_weights=False
         ))
 
-    callbacks.append(tf.keras.callbacks.ReduceLROnPlateau(
-        monitor='val_loss',
-        factor=0.1,
-        patience=10,
-        verbose=True,
-        mode='min',
-    ))
-
     # Allow early-terminate by CTRL+C
     try:
         # Execute Fitting
