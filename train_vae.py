@@ -54,6 +54,8 @@ def main():
     WEIGHT_BCE = IMG_DIM*IMG_DIM
     WEIGHT_CLASSIFIER = args.classLoss
 
+    ENABLE_CLASSIFIER_FLAG = args.enable_classifier
+
     if LOG_DIR==None:
         LOG_DIR=os.path.abspath(os.curdir)
 
@@ -111,9 +113,18 @@ def main():
     imgs = normalised_input
     print(f'Images Normalized: {np.max(imgs)}')
 
+    """
+    ## Setup the Classifier
+    """
+    # By default, classifier is 'None' to disable
+    classifier = None
+    # Class labels are extracted from input data
     class_labels = [label[0] for label in labels]
+    # Class labels put into ones-hot vector
     labels_ones_hot = LabelBinarizer().fit_transform(class_labels)
-    classifier = VAE_arch.latent_classifier_arch(LATENT_DIM, len(set(class_labels)))
+    # If enabled, build the classifier
+    if ENABLE_CLASSIFIER_FLAG:
+        classifier = VAE_arch.latent_classifier_arch(LATENT_DIM, len(set(class_labels)))
 
     """
     ## Train the VAE
@@ -150,6 +161,14 @@ def main():
             restore_best_weights=False
         ))
 
+    callbacks.append(tf.keras.callbacks.ReduceLROnPlateau(
+        monitor='val_loss',
+        factor=0.1,
+        patience=10,
+        verbose=True,
+        mode='min',
+    ))
+
     # Allow early-terminate by CTRL+C
     try:
         # Execute Fitting
@@ -171,7 +190,8 @@ def main():
     # Save network for future use
     encoder.save(filepath=(os.path.join(tb_path, "encoder")))
     decoder.save(filepath=(os.path.join(tb_path, "decoder")))
-    classifier.save(filepath=(os.path.join(tb_path, "classifier")))
+    if classifier is not None:
+        classifier.save(filepath=(os.path.join(tb_path, "classifier")))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -193,6 +213,7 @@ if __name__ == '__main__':
     parser.add_argument('--styleLoss', type=float, default=1e7)
     parser.add_argument('--klLoss', type=float, default=0.5)
     parser.add_argument('--classLoss', type=float, default=1.0)
+    parser.add_argument('--enable-classifier', action='store_true', help='Enables the classifier on the latent space')
 
     args = parser.parse_args()
     print(args)

@@ -17,6 +17,8 @@ class VAE(keras.Model):
     :type encoder: keras.Model
     :param decoder: A handle to the Decoder model
     :type decoder: keras.Model
+    :param classifier: A handle to the Classifier model (can be None)
+    :type classifier: keras.Model
     :param content_weight: Weight applied to Binary Cross-Entropy Reconstruction Loss
     :type content_weight: float
     :param style_weight: Weight applied to the Style Losss
@@ -34,7 +36,7 @@ class VAE(keras.Model):
         super(VAE, self).__init__(**kwargs)
         self.encoder = encoder
         self.decoder = decoder
-        self.classifier = classifier
+        self.classifier = classifier    # Optional: provide None to disable
         self.content_weight = content_weight
         self.style_weight = style_weight
         self.kl_weight = kl_weight
@@ -54,7 +56,8 @@ class VAE(keras.Model):
         [ec1_1, ec2_1, ec3_1, _, _, _, _, _] = self.encoder(reconstruction)
 
         # Latent Space Classifier
-        y_p = self.classifier(z_0)
+        if self.classifier is not None:
+            y_p = self.classifier(z_0)
 
         # Reconstruction loss is BCE
         reconstruction_loss = get_reconstruction_error(x, reconstruction)
@@ -82,25 +85,31 @@ class VAE(keras.Model):
         style_loss = tf.reduce_mean((sl1 + sl2 + sl3 + sl4 + sl5 + sl6) / 6.)
         weighted_style_loss = style_loss * self.style_weight
 
-        # Latent space loss
-        class_cce = keras.losses.CategoricalCrossentropy()
-        categorical_cross_entropy = class_cce(y, y_p)
-        weighted_cce = self.class_weight * categorical_cross_entropy
+        # Latent space classifier loss
+        weighted_cce = 0.0
+        if self.classifier is not None:
+            class_cce = keras.losses.CategoricalCrossentropy()
+            categorical_cross_entropy = class_cce(y, y_p)
+            weighted_cce = self.class_weight * categorical_cross_entropy
 
-        # Latent space accuracy
-        self.class_accuracy.update_state(tf.math.argmax(y, axis=1), tf.math.argmax(y_p, axis=1))
-        accuracy = self.class_accuracy.result()
+            # Latent space accuracy
+            self.class_accuracy.update_state(tf.math.argmax(y, axis=1), tf.math.argmax(y_p, axis=1))
+            accuracy = self.class_accuracy.result()
 
         total_loss = weighted_reconstruction_loss + weighted_kl_loss + weighted_style_loss + weighted_cce
 
-        return {
+        metrics = {
             "loss": total_loss,
             "reconstruction_loss": reconstruction_loss,
             "kl_loss": kl_loss,
             "style_loss": style_loss,
-            "accuracy": accuracy,
-            "categorical_cross_entropy": categorical_cross_entropy,
         }
+
+        if self.classifier is not None:
+            metrics["accuracy"] = accuracy
+            metrics["categorical_cross_entropy"] = categorical_cross_entropy
+
+        return metrics
 
 
     def train_step(self, data):
