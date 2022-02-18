@@ -138,13 +138,21 @@ def main(args):
     IMG_CH = args.imgCh
     GT_FILE = args.labels
     LOG_DIR = args.logDir
-    PATH_TO_ENCODER = args.encoderPath
-    PATH_TO_DECODER = args.decoderPath
+    encoder_path = args.encoderPath
+    decoder_path = args.decoderPath
+
+    # Either the encoder path or decoder path needs to be provided, or both for mixing models
+    if encoder_path is None and decoder_path is None:
+        raise IOError("Error, please provide encoder and/or decoder path")
+    elif encoder_path is None:
+        encoder_path = decoder_path
+    elif decoder_path is None:
+        decoder_path = encoder_path
 
     """
     ### Load Model
     """
-    encoder, decoder = load_model(PATH_TO_ENCODER, PATH_TO_DECODER)
+    encoder, decoder = load_model(encoder_path, decoder_path)
     
     """
     ## Import Training Data
@@ -153,8 +161,8 @@ def main(args):
 
     now = "{:%Y%m%dT%H%M}".format(datetime.now())
 
-    if (PATH_TO_DECODER == PATH_TO_ENCODER):
-        tb_path = os.path.join(PATH_TO_DECODER, f"results_{now}")
+    if (decoder_path == encoder_path):
+        tb_path = os.path.join(decoder_path, f"results_{now}")
     else:
         tb_path = os.path.join(LOG_DIR, f"results_{now}")
 
@@ -327,9 +335,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--labels', type=str, default = '.',
                         help="Ground Truth File with labels")
-    parser.add_argument('--encoderPath', type=str, default='.',
+    parser.add_argument('--encoderPath', type=str, default=None,
                         help="path containing encoder")
-    parser.add_argument('--decoderPath', type=str, default='.',
+    parser.add_argument('--decoderPath', type=str, default=None,
                         help="path containing decoder")
     parser.add_argument('--logDir', type=str, default='.',
                         help="path where logs will be saved")

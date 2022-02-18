@@ -64,6 +64,8 @@ def main():
     PATH_TO_ENCODER = args.encoderPath
     PATH_TO_DECODER = args.decoderPath
 
+    WORKERS = args.workers
+
     """
     ## Build the encoder
     """
@@ -97,7 +99,8 @@ def main():
         IMG_DIM, 
         IMG_CH, 
         groundTruthFile=GT_FILE, 
-        output_preprocess_path=OUTPUT_PREPROCESS_PATH
+        output_preprocess_path=OUTPUT_PREPROCESS_PATH,
+        workers=WORKERS
     )
 
     # randomize order
@@ -133,8 +136,22 @@ def main():
         tb_path = PATH_TO_DECODER
 
     else:
-        now = "{:%Y%m%dT%H%M}".format(dt.now())
+        now = "{:%Y%m%dT%H%M%S}".format(dt.now())
         tb_path = os.path.join(LOG_DIR, now)
+        # In the case that several experiments are called, we may clobber the log output
+        if os.path.exists(tb_path):
+            # To remedy, we'll increment the log path by increments of 1
+            for path_increment in range(256):
+                new_tb_path = tb_path + f"_{path_increment:3d}"
+                # Once we find a non-existant path, we'll assign and create the path 
+                if not os.path.exists(new_tb_path):
+                    tb_path = new_tb_path
+                    os.makedirs(tb_path)
+                    break
+            # Do a final check to make sure we are not clobbering anymore
+            if os.path.exists(tb_path):
+                # If clobbering is still an issue, then raise an error and let the user decide
+                raise IOError(f"Error, logging output path already exists: {tb_path}")
 
     # VAE Instantiation
     vae = VAE(encoder, decoder, classifier, WEIGHT_BCE, WEIGHT_SL, WEIGHT_KL, WEIGHT_CLASSIFIER, IMG_DIM)
@@ -206,6 +223,7 @@ if __name__ == '__main__':
     parser.add_argument('--klLoss', type=float, default=0.5)
     parser.add_argument('--classLoss', type=float, default=1.0)
     parser.add_argument('--enable-classifier', action='store_true', help='Enables the classifier on the latent space')
+    parser.add_argument('--workers', type=int, default=8, help='Multiprocessing workers for loading images')
 
     args = parser.parse_args()
     print(args)
