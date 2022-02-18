@@ -5,10 +5,6 @@ Based on the implementation by F. Chollet found here:
 - https://github.com/keras-team/keras-io/blob/master/examples/generative/vae.py
 
 ## Installation
-~~Implemented using Python 3.7 and Tensorflow 2.3.0.  Uses GPU when available.  See the **_vae37.yml_** file (Windows 10 compatible)
-for list of packages.  Although this uses a conda environment, there were issues using the
-Tensorflow packages available through conda, solved by mixing pip packages and conda packages: pip for tensorflow and
- keras, conda for everything else possible.~~
 
 This project uses Python 3.7 and Tensorflow 2.3.0, but work is in progress to update to the most latest version of Tensorflow. Environments are tracked using Anaconda, and an assortment of cross-platform environment scripts are provided under the `environments` directory. The earliest working environment is provided under the `vae37.yml` configuration file. An environment script for the latest Tensorflow version is provided under `environment_latest.yaml`.  Tests are written to ensure the environments are working as expected.
 
