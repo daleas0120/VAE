@@ -6,6 +6,8 @@ import time
 import tqdm
 from tqdm import trange
 import shutil
+from multiprocessing import Pool
+from itertools import repeat
 
 import numpy as np
 
@@ -19,9 +21,56 @@ from VAE.utils import utils as ut
 from VAE.utils import custom_parse_rgb as parse_txt
 
 
+def load_image_as_array(img_path: str) -> np.ndarray:
+    assert(os.path.exists(img_path))
+    return np.array(skimage.io.imread(img_path))
+
+def load_single_image(annotation, img_dim, img_ch, output_preprocess_path):
+    try:
+        # Load img set into memory.  This is only manageable since the dataset is tiny.
+        image = load_image_as_array(annotation['img_path'])
+
+        if img_ch > 1:
+            if len(image.shape) == 2:
+                from skimage.color import gray2rgb
+                image = gray2rgb(image)
+
+        height, width = image.shape[:2]
+
+        max_pixel = np.max(image)
+        min_pixel = np.min(image)
+        image = (image - min_pixel) / (max_pixel - min_pixel)
+
+        if (height != img_dim) or (width != img_dim):
+                image = sk.transform.resize(image[:, :, :img_ch], (img_dim, img_dim, img_ch))
+
+        if annotation['z_filename'] != 'None':
+            z_image = load_image_as_array(annotation['z_img_path'])
+
+            height, width = z_image.shape[:2]
+
+            if (height != img_dim) or (width != img_dim):
+                z_image = sk.transform.resize(z_image[:, :, 1], (img_dim, img_dim, 1))
+
+            image = np.dstack((image, z_image))
+
+        # Write out the preprocessed image
+        if output_preprocess_path is not None:
+            # Note: convert to uint8 to prevent warning - wmb
+            skimage.io.imsave(os.path.join(output_preprocess_path, annotation['filename']), (255.*image).astype('uint8'))
+    except:
+        print(annotation['img_path'])
+        raise
+
+    return image, annotation['Class'], annotation['DataType']
+
+def load_single_image_star(args):
+    return load_single_image(*args)
+
+
 class RGB_Dataset(ut.Dataset):
 
-    def load_rgb(self, IMG_DIM, IMG_CH, dataset_dir=None, groundTruthFile=None, output_preprocess_path=None):
+    def load_rgb(self, IMG_DIM, IMG_CH, dataset_dir=None, groundTruthFile=None, output_preprocess_path=None, workers=8):
 
         labels = []
         imgs = []
@@ -81,44 +130,25 @@ class RGB_Dataset(ut.Dataset):
         annotations = list(annotations.values())
 
         # Add images
+        
+        # Multiprocessing version
+        r_val = list()
+        pool_args = zip(annotations, repeat(IMG_DIM), repeat(IMG_CH), repeat(output_preprocess_path))
+        with Pool(workers) as pool:
+            r_val = list(tqdm.tqdm(pool.imap(load_single_image_star, pool_args), total=len(annotations), desc='Loading Images'))
 
-        for idx,a in tqdm.tqdm(enumerate(annotations), desc='Loading Images', total=len(annotations)):
-            try:
-                # Load img set into memory.  This is only manageable since the dataset is tiny.
-                image = np.array(skimage.io.imread(a['img_path']))
+        for r in r_val:
+            imgs.append(r[0])
+            labels.append([r[1], r[2]])
+        
 
-                if IMG_CH > 1:
-                    if len(image.shape) == 2:
-                        from skimage.color import gray2rgb
-                        image = gray2rgb(image)
-
-
-                height, width = image.shape[:2]
-
-                if (height != IMG_DIM) or (width != IMG_DIM):
-                        image = sk.transform.resize(image[:, :, :IMG_CH], (IMG_DIM, IMG_DIM, IMG_CH))
-
-                if a['z_filename'] != 'None':
-                    z_image = np.array(skimage.io.imread(a['z_img_path']))
-
-                    height, width = z_image.shape[:2]
-
-                    if (height != IMG_DIM) or (width != IMG_DIM):
-                        z_image = sk.transform.resize(z_image[:, :, 1], (IMG_DIM, IMG_DIM, 1))
-
-                    image = np.dstack((image, z_image))
-
-                # Write out the preprocessed image
-                if output_preprocess_path is not None:
-                    skimage.io.imsave(os.path.join(output_preprocess_path, a['filename']), image)
-
-                labels.append([a['Class'], a['DataType']])
-                imgs.append(image)
-
-            #time.sleep(0.1)
-            except:
-                print(a['img_path'])
-                raise
+        """
+        # Use this for single-process
+        for annotation in tqdm.tqdm(annotations, desc='Loading Images'):
+            image, class_name, data_type = load_single_image(annotation, IMG_DIM, IMG_CH, output_preprocess_path)
+            labels.append([class_name, data_type])
+            imgs.append(image)
+        """
 
         return np.asarray(imgs), labels, annotations
 
@@ -153,7 +183,7 @@ def get_reconstruction_error(img_tensor, reconstruction_tensor):
     )
 
 def get_kl_loss(z_mean, z_log_var):
-    return tf.reduce_mean(
+    return -tf.reduce_mean(
         1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var)
     )
     

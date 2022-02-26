@@ -26,6 +26,8 @@ from VAE.utils.VAE_utils import RGB_Dataset
 from VAE.include import VAE_arch
 from VAE import VAE
 
+from sklearn.preprocessing import LabelBinarizer
+
 print('Keras: '+keras.__version__)
 print('Tensorflow: ' + tf.__version__)
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
@@ -50,6 +52,9 @@ def main():
     WEIGHT_SL = args.styleLoss
     WEIGHT_KL = args.klLoss
     WEIGHT_BCE = IMG_DIM*IMG_DIM
+    WEIGHT_CLASSIFIER = args.classLoss
+
+    ENABLE_CLASSIFIER_FLAG = args.enable_classifier
 
     if LOG_DIR==None:
         LOG_DIR=os.path.abspath(os.curdir)
@@ -58,6 +63,8 @@ def main():
 
     PATH_TO_ENCODER = args.encoderPath
     PATH_TO_DECODER = args.decoderPath
+
+    WORKERS = args.workers
 
     """
     ## Build the encoder
@@ -92,7 +99,8 @@ def main():
         IMG_DIM, 
         IMG_CH, 
         groundTruthFile=GT_FILE, 
-        output_preprocess_path=OUTPUT_PREPROCESS_PATH
+        output_preprocess_path=OUTPUT_PREPROCESS_PATH,
+        workers=WORKERS
     )
 
     # randomize order
@@ -109,17 +117,44 @@ def main():
     print(f'Images Normalized: {np.max(imgs)}')
 
     """
+    ## Setup the Classifier
+    """
+    # By default, classifier is 'None' to disable
+    classifier = None
+    # Class labels are extracted from input data
+    class_labels = [label[0] for label in labels]
+    # Class labels put into ones-hot vector
+    labels_ones_hot = LabelBinarizer().fit_transform(class_labels)
+    # If enabled, build the classifier
+    if ENABLE_CLASSIFIER_FLAG:
+        classifier = VAE_arch.latent_classifier_arch(LATENT_DIM, len(set(class_labels)))
+
+    """
     ## Train the VAE
     """
     if (PATH_TO_DECODER == PATH_TO_ENCODER) and (PATH_TO_DECODER != None):
         tb_path = PATH_TO_DECODER
 
     else:
-        now = "{:%Y%m%dT%H%M}".format(dt.now())
+        now = "{:%Y%m%dT%H%M%S}".format(dt.now())
         tb_path = os.path.join(LOG_DIR, now)
+        # In the case that several experiments are called, we may clobber the log output
+        if os.path.exists(tb_path):
+            # To remedy, we'll increment the log path by increments of 1
+            for path_increment in range(256):
+                new_tb_path = tb_path + f"_{path_increment:3d}"
+                # Once we find a non-existant path, we'll assign and create the path 
+                if not os.path.exists(new_tb_path):
+                    tb_path = new_tb_path
+                    os.makedirs(tb_path)
+                    break
+            # Do a final check to make sure we are not clobbering anymore
+            if os.path.exists(tb_path):
+                # If clobbering is still an issue, then raise an error and let the user decide
+                raise IOError(f"Error, logging output path already exists: {tb_path}")
 
     # VAE Instantiation
-    vae = VAE(encoder, decoder, WEIGHT_BCE, WEIGHT_SL, WEIGHT_KL, IMG_DIM)
+    vae = VAE(encoder, decoder, classifier, WEIGHT_BCE, WEIGHT_SL, WEIGHT_KL, WEIGHT_CLASSIFIER, IMG_DIM)
 
     # Model Compile
     vae.compile(optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE))
@@ -147,7 +182,9 @@ def main():
     try:
         # Execute Fitting
         vae.fit(
-            imgs, 
+            #imgs, 
+            x=imgs,
+            y=labels_ones_hot,
             epochs=EPOCHS, 
             batch_size=MINI_BATCH, 
             callbacks=callbacks,
@@ -162,6 +199,8 @@ def main():
     # Save network for future use
     encoder.save(filepath=(os.path.join(tb_path, "encoder")))
     decoder.save(filepath=(os.path.join(tb_path, "decoder")))
+    if classifier is not None:
+        classifier.save(filepath=(os.path.join(tb_path, "classifier")))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -181,7 +220,10 @@ if __name__ == '__main__':
     parser.add_argument('--earlyStopping', action='store_true')
     parser.add_argument('--earlyStoppingPatience', type=int, default=8)
     parser.add_argument('--styleLoss', type=float, default=1e7)
-    parser.add_argument('--klLoss', type=float, default=-0.5)
+    parser.add_argument('--klLoss', type=float, default=0.5)
+    parser.add_argument('--classLoss', type=float, default=1.0)
+    parser.add_argument('--enable-classifier', action='store_true', help='Enables the classifier on the latent space')
+    parser.add_argument('--workers', type=int, default=8, help='Multiprocessing workers for loading images')
 
     args = parser.parse_args()
     print(args)
