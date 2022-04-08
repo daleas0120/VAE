@@ -10,7 +10,7 @@ This project uses Python 3.7 and Tensorflow 2.3.0, but work is in progress to up
 
 ### TensorFlow 2.6 notes
 
-Prior to Tensorflow 2.6, packages for `tensorflow`, `tensorflow-gpu`, `tensorboard`, `keras`, and build tools and drivers were installed using a mixture of conda dependencies and pip dependencies.  Post 2.6, `tensorflow-gpu` and `tensorboard` are privided via a pip install of `tensorflow`.  Installation of `cudatoolkit` and `cdnn` are still handled with conda, and `keras` must be installed separately with pip matching the `tensorflow` version. 
+Prior to Tensorflow 2.6, packages for `tensorflow`, `tensorflow-gpu`, `tensorboard`, `keras`, and build tools and drivers were installed using a mixture of conda dependencies and pip dependencies.  Post 2.6, `tensorflow-gpu` and `tensorboard` are privided via a pip install of `tensorflow`.  Installation of `cudatoolkit` and `cudnn` are still handled with conda, and `keras` must be installed separately with pip matching the `tensorflow` version. 
 
 ## Running Tests with Nosetests
 
