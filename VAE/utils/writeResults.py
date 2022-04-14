@@ -51,7 +51,7 @@ def simpleResults(PATH_TO_RESULTS, results_file_name, orig_list, loss_per_img):
 
     for idx in range(len(orig_list)):
 
-        itm = orig_list[idx]['img_path'] + "," + str(loss_per_img[idx]) + "\n"
+        itm = orig_list[idx]['file_name'] + "," + str(loss_per_img[idx]) + "\n"
 
         results_file.write(itm)
 
