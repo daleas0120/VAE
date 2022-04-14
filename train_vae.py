@@ -73,7 +73,8 @@ def main():
     if PATH_TO_ENCODER:
         encoder = keras.models.load_model(os.path.join(PATH_TO_ENCODER, "encoder"))
     else:
-        encoder = VAE_arch.encoder_3conv7c(IMG_DIM, IMG_CH, LATENT_DIM)
+        encoder = VAE_arch.betaVAE_encoder(IMG_DIM, IMG_CH, LATENT_DIM)
+        #encoder = VAE_arch.encoder_3conv7c(IMG_DIM, IMG_CH, LATENT_DIM)
         #encoder = VAE_arch.encoder_3conv7d(IMG_DIM, IMG_CH, LATENT_DIM)
 
     encoder.summary()
@@ -86,7 +87,8 @@ def main():
         decoder = keras.models.load_model(os.path.join(PATH_TO_DECODER,"decoder"))
     else:
         # Decoding network
-        decoder = VAE_arch.decoder_3conv7c(LATENT_DIM)
+        #decoder = VAE_arch.decoder_3conv7c(LATENT_DIM)
+        decoder = VAE_arch.betaVAE_decoder(LATENT_DIM)
 
     decoder.summary()
 
