@@ -200,6 +200,41 @@ def decoder_4conv(LATENT_DIM):
 
     return decoder
 
+def betaVAE_encoder(IMG_DIM, IMG_CH, LATENT_DIM):
+
+    encoder_inputs = keras.Input(shape=(IMG_DIM, IMG_DIM, IMG_CH))  # if this is 128
+    conv1 = layers.Conv2D(32, (4, 4), activation="relu", strides=2, padding="same", name="conv1encoder")(encoder_inputs)
+    conv2 = layers.Conv2D(32, (4, 4), activation="relu", strides=2, padding="same", name="conv2encoder")(conv1)
+    conv3 = layers.Conv2D(32, (4, 4), activation="relu", strides=2, padding="same", name="conv3encoder")(conv2)
+    conv4 = layers.Conv2D(32, (4, 4), activation="relu", strides=2, padding="same", name="conv4encoder")(conv3)
+    conv5 = layers.Conv2D(32, (4, 4), activation="relu", strides=2, padding="same", name="conv5encoder")(conv4)
+    flat = layers.Flatten(name='flattenEncoder')(conv5)
+    fcc_1 = layers.Dense(512, activation="relu", name="fcc_1")(flat)
+    fcc_2 = layers.Dense(512, activation = "relu", name="fcc_2")(fcc_1)
+    #dense = layers.Dense(512, activation="relu", name='denseEncoder')(flat)  # <- this is the bottleneck
+    z_mean = layers.Dense(LATENT_DIM, name="z_mean")(fcc_2)
+    z_log_var = layers.Dense(LATENT_DIM, name="z_log_var")(fcc_2)
+    z = Sampling(name="sampling")([z_mean, z_log_var])
+    encoder = keras.Model(encoder_inputs, [conv1, conv2, conv3, conv4, conv5, fcc_1, fcc_2, z_mean, z_log_var, z], name="encoder")
+
+    return encoder
+
+def betaVAE_decoder(LATENT_DIM):
+
+    # Decoding network
+    latent_inputs = keras.Input(shape=(LATENT_DIM,))  # "input_2"
+    fcc_3 = layers.Dense(512, activation="relu", name="fcc_3")(latent_inputs)
+    fcc_4 = layers.Dense(512, activation = "relu", name="fcc_4")(fcc_3)
+    reshape = layers.Reshape((4, 4, 32))(fcc_4)
+    conv5 = layers.Conv2DTranspose(32, (4, 4), activation="relu", strides=2, padding="same", name="conv5decoder")(reshape)
+    conv4 = layers.Conv2DTranspose(32, (4, 4), activation="relu", strides=2, padding="same", name="conv4decoder")(conv5)
+    conv3 = layers.Conv2DTranspose(32, (4, 4), activation="relu", strides=2, padding="same", name="conv3decoder")(conv4)
+    conv2 = layers.Conv2DTranspose(32, (4, 4), activation="relu", strides=2, padding="same", name="conv2decoder")(conv3)
+    decoder_outputs = layers.Conv2DTranspose(3, (4, 4), strides=2, padding="same", activation="sigmoid", name="conv1decoder")(conv2)  # "conv2d_transpose_3"
+    decoder = keras.Model(latent_inputs, [fcc_3, fcc_4, reshape, conv5, conv4, conv3, conv2, decoder_outputs], name="decoder")
+    return decoder
+
+
 """
 ## Classifier Architecture
 """
