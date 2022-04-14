@@ -8,7 +8,7 @@ from tqdm import trange
 import shutil
 from multiprocessing import Pool
 from itertools import repeat
-
+import cv2
 import numpy as np
 
 import tensorflow as tf
@@ -68,6 +68,44 @@ def load_single_image_star(args):
     return load_single_image(*args)
 
 
+def parse_coco_labels(coco_json, IMG_DIM, IMG_CH):
+    labels = []
+    imgs = []
+
+    [path, head] = os.path.split(coco_json)
+    coco_annotations = json.load(open(coco_json))
+    annotations = list(coco_annotations['annotations'])
+    img_list = list(coco_annotations['images'])
+
+    for idx, a in tqdm.tqdm(enumerate(img_list), desc='Loading Images', total=len(annotations)):
+        try:
+            # Load img set into memory.  This is only manageable since the dataset is tiny.
+
+            img_path = os.path.join(path, a['file_name'])
+            image = np.array(skimage.io.imread(img_path))
+            height, width = image.shape[:2]
+
+            if (height != IMG_DIM) or (width != IMG_DIM):
+                image = sk.transform.resize(image[:, :, :IMG_CH], (IMG_DIM, IMG_DIM, IMG_CH))
+
+            imgs.append(image)
+
+            img_id = a['id']
+            class_id = annotations[img_id-1]['category_id']
+            superclass_name = coco_annotations['categories'][class_id]['supercategory']
+            class_name = coco_annotations['categories'][class_id]['name']
+            labels.append([superclass_name, class_name])
+
+            img_list[idx]['Class'] = class_name
+            img_list[idx]['SuperClass'] = superclass_name
+
+        except:
+            print(img_path)
+            raise
+
+    return np.asarray(imgs), labels, img_list
+
+
 class RGB_Dataset(ut.Dataset):
 
     def load_rgb(self, IMG_DIM, IMG_CH, dataset_dir=None, groundTruthFile=None, output_preprocess_path=None, workers=8):
@@ -109,7 +147,8 @@ class RGB_Dataset(ut.Dataset):
         # check to see if groundTruthFile is .txt or .json
         extension = os.path.splitext(groundTruthFile)[1]
         if extension == ".json":
-            annotations = json.load(open(datafile))
+            return parse_coco_labels(datafile, IMG_DIM, IMG_CH)
+
         elif extension == ".txt":  # load txt file
             annotations, dataset_dir = parse_txt.load(datafile)
             print('Number of images found: ', len(annotations))
@@ -151,7 +190,6 @@ class RGB_Dataset(ut.Dataset):
         """
 
         return np.asarray(imgs), labels, annotations
-
 
 # The gram matrix of an image tensor (feature-wise outer product)
 def gram_matrix(x):
@@ -227,3 +265,91 @@ def customLoss(data, featuresOG, features, IMG_DIM):
 
     return total_loss, content_loss, kl_loss,  sL
 
+def getImageLoss(gt_img, img):
+    reconstruction_loss = tf.reduce_mean(
+        keras.losses.binary_crossentropy(gt_img[None, :, :, :], img[None, :, :, :])
+    )
+    #reconstruction_loss *= IMG_DIM * IMG_DIM
+
+    return reconstruction_loss
+
+
+def dimension_wise_KLdivergence():
+    return 0
+
+def total_correlation():
+    return 0
+
+def index_code_mutual_information():
+    return 0
+
+def get_log_pz_qz_prodzi_qzCx(latent_sample, latent_dist, n_data, is_mss=True):
+    ## This is a straight up copy of Yann Dubs code into tensorflow.
+    ## https://github.com/YannDubs/disentangling-vae/blob/master/disvae/models/losses.py
+
+    batch_size, hidden_dim = latent_sample.shape
+
+    #calculate log q(z|x)
+    log_q_zCx = log_density_gaussian(latent_sample, *latent_dist).sum(dim=1)
+
+    # calculate log p(z)
+
+
+def disentangle_loss(data, featuresOG, features, IMG_DIM, a=1, b=1, c=1):
+
+    reconstruction_loss = customLoss(data, featuresOG, features, IMG_DIM)
+
+    mi_loss = index_code_mutual_information()
+
+    tc_loss = total_correlation()
+
+    dw_kl_loss = dimension_wise_KLdivergence()
+
+    loss = reconstruction_loss + a*mi_loss + b*tc_loss + c*dw_kl_loss
+
+    return loss
+
+
+def generate_img_set(decoder, z, filepath, orig_list, orig_imgs, IMG_DIM, IMG_CH):
+    print("Generating Latent Space Image Set")
+    loss_per_img = []
+    path = filepath + "/generatedImgs/"
+    os.mkdir(path)
+    num_imgs = len(orig_list)
+    for i in range(num_imgs):
+        gt_img = orig_imgs[i]
+        img_name = orig_list[i]['file_name']
+
+        # plt.figure()
+        # ax = plt.axes([0, 0, 1, 1], frameon=False)
+        # ax.get_xaxis().set_visible(False)
+        # ax.get_yaxis().set_visible(False)
+        # plt.imshow(gt_img)
+        # plt.autoscale(tight=True)
+        # plt.show()
+
+        #img = decoder(np.array([z[i]]))
+        _, _, _, _, img = decoder(np.array([z[i]]))
+        img = np.array(img)
+        img = img[0, :, :, :]
+        reconstruction_loss = getImageLoss(gt_img, img)
+
+        # ---Format to write out in 128x128 img format with openCV---#
+
+        img_rgb = 255.999 * img
+        img_rgb = np.array(img_rgb, dtype='float32').astype('uint8')
+        img_bgr = np.dstack((img_rgb[:, :, 2], img_rgb[:, :, 1], img_rgb[:, :, 0]))
+
+        cv2.imwrite(os.path.join(filepath, "generatedImgs", img_name), img_bgr)
+
+        # img = img[0].reshape(IMG_DIM, IMG_DIM, IMG_CH)
+
+        # plt.figure()
+        # plt.imshow(img)
+        # plt.axis('off')
+        # plt.show()
+        # plt.close()
+
+        loss_per_img.append(float(np.array(reconstruction_loss)))
+
+    return loss_per_img
