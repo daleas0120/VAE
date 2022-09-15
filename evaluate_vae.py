@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 import tensorflow as tf
 from tensorflow import keras
-
+from VAE.utils import VAE_utils
 from VAE.utils import writeResults
 from VAE.utils.VAE_utils import RGB_Dataset, get_reconstruction_error
 
@@ -92,7 +92,7 @@ def generate_latent_space(encoder, imgs:np.ndarray) -> tuple:
     for img in tqdm.tqdm(imgs, desc='processing latent space'):
         img = np.expand_dims(img, axis=0)
         #TODO: Handle custom architectures -wmb
-        _, _, _, _, _, z_mean, z_log_var, z = encoder.predict(img) # num of outputs must match num of outputs from network
+        _, _, _, _, _, _, _, z_mean, z_log_var, z = encoder.predict(img) # num of outputs must match num of outputs from network
         z_mean_list.append(np.array(z_mean))
         z_log_var_list.append(np.array(z_log_var))
         z_list.append(np.array(z))
@@ -212,7 +212,7 @@ def main(args):
         num_imgs = len(orig_list)
         for i in range(num_imgs):
             gt_img = orig_imgs[i]
-            img_name = orig_list[i]['filename']
+            img_name = orig_list[i]['file_name']
 
             # plt.figure()
             # ax = plt.axes([0, 0, 1, 1], frameon=False)
@@ -224,7 +224,7 @@ def main(args):
 
             #img = decoder(np.array([z[i]]))
             #TODO: Decoder is hardcoded for its outputs - wmb
-            _, _, _, _, img = decoder(np.array([z[i]]))
+            _, _, _, _, _, _, _, img = decoder(np.array([z[i]]))
             img = np.array(img)
             img = img[0, :, :, :]
             reconstruction_loss = get_reconstruction_error(gt_img[None, :, :, :], img[None, :, :, :])
@@ -328,6 +328,7 @@ def main(args):
             img_bgr = np.dstack((img_rgb[:, :, 2], img_rgb[:, :, 1], img_rgb[:, :, 0]))
             cv2.imwrite(fig_name, img_bgr)
 
+    VAE_utils.generate_adversarial_img_set(z_results, decoder, tb_path, "UNIFORM", num_centers=10, num_steps=60)
 
     #plot_latent(encoder, decoder, IMG_CH, IMG_DIM, z_results, tb_path, loss_per_img)
 

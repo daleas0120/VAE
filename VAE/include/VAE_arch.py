@@ -3,9 +3,13 @@
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from tensorflow_addons.layers import SpectralNormalization
 
 """
 ## Create a sampling layer
+
+
+
 """
 
 class Sampling(layers.Layer):
@@ -96,6 +100,80 @@ def encoder_3conv7c(IMG_DIM, IMG_CH, LATENT_DIM):
 
     return encoder
 
+def encoder_3conv7d(IMG_DIM, IMG_CH, LATENT_DIM):
+
+    encoder_inputs = keras.Input(shape=(IMG_DIM, IMG_DIM, IMG_CH))  # if this is 128
+    conv1 = layers.Conv2D(128, (7, 7), activation="relu", strides=2, padding="same", name="conv1encoder")(encoder_inputs)  # 64
+    conv2 = layers.Conv2D(256, (7, 7), activation="relu", strides=2, padding="same", name="conv2encoder")(conv1)  # 32
+    conv3 = layers.Conv2D(512, (7, 7), activation="relu", strides=2, padding="same", name="conv3encoder")(conv2)
+    flat = layers.Flatten(name='flattenEncoder')(conv3)
+    dense = layers.Dense(512, activation="relu", name='denseEncoder')(flat)  # <- this is the bottleneck
+    z_mean = layers.Dense(LATENT_DIM, name="z_mean")(dense)
+    z_log_var = layers.Dense(LATENT_DIM, name="z_log_var")(dense)
+    z = Sampling(name="sampling")([z_mean, z_log_var])
+    encoder = keras.Model(encoder_inputs, [conv1, conv2, conv3, flat, dense, z_mean, z_log_var, z], name="encoder")
+
+    return encoder
+
+
+def encoder_3conv7d_sns(IMG_DIM, IMG_CH, LATENT_DIM):
+
+    encoder_inputs = keras.Input(shape=(IMG_DIM, IMG_DIM, IMG_CH))  # if this is 128
+
+    conv1 = SpectralNormalization(layers.Conv2D(128, (7, 7), activation="relu", strides=2, padding="same", name="conv1encoder"))(encoder_inputs)  # 64
+    conv2 = SpectralNormalization(layers.Conv2D(256, (7, 7), activation="relu", strides=2, padding="same", name="conv2encoder"))(conv1) # 32
+    conv3 = SpectralNormalization(layers.Conv2D(512, (7, 7), activation="relu", strides=2, padding="same", name="conv3encoder"))(conv2)
+    flat = layers.Flatten(name='flattenEncoder')(conv3)
+    dense = SpectralNormalization(layers.Dense(512, activation="relu", name='denseEncoder'))(flat)  # <- this is the bottleneck
+    z_mean = SpectralNormalization(layers.Dense(LATENT_DIM, name="z_mean"))(dense)
+    z_log_var = SpectralNormalization(layers.Dense(LATENT_DIM, name="z_log_var"))(dense)
+    z = Sampling(name="sampling")([z_mean, z_log_var])
+    encoder = keras.Model(encoder_inputs, [conv1, conv2, conv3, flat, dense, z_mean, z_log_var, z], name="encoder")
+
+    return encoder
+
+
+def encoder_vgg_sn(IMG_DIM, IMG_CH, LATENT_DIM):
+
+    encoder_inputs = keras.Input(shape=(IMG_DIM, IMG_DIM, IMG_CH))
+
+    conv1_1 = SpectralNormalization(layers.Conv2D(64, (5, 5), activation="relu", strides=1, padding="same"), name="conv1_1en")(encoder_inputs)
+    conv1_2 = SpectralNormalization(layers.Conv2D(64, (5, 5), activation="relu", strides=1, padding="same"), name="conv1_2en")(conv1_1)
+    mp_1 = layers.MaxPool2D(pool_size=(2, 2), strides=2, padding="same", name="maxpool_1")(conv1_2)
+
+    conv2_1 = SpectralNormalization(layers.Conv2D(128, (5, 5), activation="relu", strides=1, padding="same"), name="conv2_1en")(mp_1)
+    conv2_2 = SpectralNormalization(layers.Conv2D(128, (5, 5), activation="relu", strides=1, padding="same"), name="conv2_2en")(conv2_1)
+    mp_2 = layers.MaxPool2D(pool_size=(2, 2), strides=2, padding="same", name="maxpool_2")(conv2_2)
+
+    conv3_1 = SpectralNormalization(layers.Conv2D(256, (5, 5), activation="relu", strides=1, padding="same"), name="conv3_1en")(mp_2)
+    conv3_2 = SpectralNormalization(layers.Conv2D(256, (5, 5), activation="relu", strides=1, padding="same"), name="conv3_2en")(conv3_1)
+    conv3_3 = SpectralNormalization(layers.Conv2D(256, (5, 5), activation="relu", strides=1, padding="same"), name="conv3_3en")(conv3_2)
+    mp_3 = layers.MaxPool2D(pool_size=(2, 2), strides=2)(conv3_3)
+
+    conv4_1 = SpectralNormalization(layers.Conv2D(512, (5, 5), activation="relu", strides=1, padding="same"), name="conv4_1en")(mp_3)
+    conv4_2 = SpectralNormalization(layers.Conv2D(512, (5, 5), activation="relu", strides=1, padding="same"), name="conv4_2en")(conv4_1)
+    conv4_3 = SpectralNormalization(layers.Conv2D(512, (5, 5), activation="relu", strides=1, padding="same"), name="conv4_3en")(conv4_2)
+    mp_4 = layers.MaxPool2D(pool_size=(2, 2), strides=2)(conv4_3)
+
+    conv5_1 = SpectralNormalization(layers.Conv2D(512, (5, 5), activation="relu", strides=1, padding="same"), name="conv5_1en")(mp_4)
+    conv5_2 = SpectralNormalization(layers.Conv2D(512, (5, 5), activation="relu", strides=1, padding="same"), name="conv5_2en")(conv5_1)
+    conv5_3 = SpectralNormalization(layers.Conv2D(512, (5, 5), activation="relu", strides=1, padding="same"), name="conv5_3en")(conv5_2)
+    mp_5 = layers.AveragePooling2D(pool_size=(2, 2), strides=2)(conv5_3)
+
+    flat = layers.Flatten(name="flattenEncoder")(mp_5)
+    dense = SpectralNormalization(layers.Dense(512, activation="relu", name="denseEncoder"))(flat)
+    z_mean = SpectralNormalization(layers.Dense(LATENT_DIM, activation="relu", name="z_mean"))(dense)
+    z_log_var = SpectralNormalization(layers.Dense(LATENT_DIM, name="z_log_var"))(dense)
+    z = Sampling(name="sampling")([z_mean, z_log_var])
+
+    encoder = keras.Model(encoder_inputs,
+                          [conv1_1, conv1_2, conv2_1, conv2_2, conv3_1, conv3_2, conv3_3, conv4_1, conv4_2, conv4_3,
+                           conv5_1, conv5_2, conv5_3, flat, dense, z_mean, z_log_var, z], name="encoder")
+
+    return encoder
+
+
+
 def encoder_3conv(IMG_DIM, IMG_CH, LATENT_DIM):
     encoder_inputs = keras.Input(shape=(IMG_DIM, IMG_DIM, IMG_CH))  # if this is 128
     x = layers.Conv2D(32, (3, 3), activation="relu", strides=2, padding="same")(encoder_inputs)  # 64
@@ -166,6 +244,77 @@ def decoder_3conv7c(LATENT_DIM):
     decoder = keras.Model(latent_inputs, [dense, reshape, conv3, conv2, decoder_outputs], name="decoder")
 
     return decoder
+
+def decoder_3conv7d(LATENT_DIM):
+    # Decoding network
+    latent_inputs = keras.Input(shape=(LATENT_DIM,))  # "input_2"
+    dense = layers.Dense(16 * 16 * 512, activation="relu")(latent_inputs)  # "dense_1"
+    reshape = layers.Reshape((16, 16, 512))(dense)  # "reshape"
+    conv3 = layers.Conv2DTranspose(256, (7, 7), activation="relu", strides=2, padding="same", name="conv3decoder")(reshape)  # "conv2d_transpose_1"
+    conv2 = layers.Conv2DTranspose(128, (7, 7), activation="relu", strides=2, padding="same", name="conv2decoder")(conv3)  # "conv2d_transpose_2"
+    decoder_outputs = layers.Conv2DTranspose(3, (7, 7), strides=2, activation="sigmoid", padding="same",name="conv1decoder")(conv2)  # "conv2d_transpose_3"
+    decoder = keras.Model(latent_inputs, [dense, reshape, conv3, conv2, decoder_outputs], name="decoder")
+
+    return decoder
+
+def decoder_3conv7d_sns(LATENT_DIM):
+    # Decoding network
+    latent_inputs = keras.Input(shape=(LATENT_DIM,))  # "input_2"
+    dense = SpectralNormalization(layers.Dense(16 * 16 * 512, activation="relu"))(latent_inputs)  # "dense_1"
+    reshape = layers.Reshape((16, 16, 512))(dense)  # "reshape"
+    conv3 = SpectralNormalization(layers.Conv2DTranspose(256, (7, 7), activation="relu", strides=2, padding="same",
+                                                         name="conv3decoder"))(reshape)  # "conv2d_transpose_1"
+    conv2 = SpectralNormalization(layers.Conv2DTranspose(128, (7, 7), activation="relu", strides=2, padding="same",
+                                                         name="conv2decoder"))(conv3)  # "conv2d_transpose_2"
+    decoder_outputs = SpectralNormalization(layers.Conv2DTranspose(3, (7, 7), strides=2, activation="sigmoid", padding="same",
+                                                                   name="conv1decoder"))(conv2)  # "conv2d_transpose_3"
+    decoder = keras.Model(latent_inputs, [dense, reshape, conv3, conv2, decoder_outputs], name="decoder")
+
+    return decoder
+
+
+def decoder_vgg_sn(IMG_DIM, LATENT_DIM):
+
+    latent_inputs = keras.Input(shape=(LATENT_DIM, ))
+    dense = SpectralNormalization(layers.Dense(512*4*4, activation="relu"), name="denseDecoder")(latent_inputs)
+    reshape = layers.Reshape((4, 4, 512))(dense)
+
+    conv5_3 = SpectralNormalization(layers.Conv2DTranspose(512, (5, 5), activation="relu", strides=2, padding="same"),
+                                    name="conv5_3de")(reshape)
+    conv5_2 = SpectralNormalization(layers.Conv2DTranspose(512, (5, 5), activation="relu", strides=1, padding="same"),
+                                    name="conv5_2de")(conv5_3)
+    conv5_1 = SpectralNormalization(layers.Conv2DTranspose(512, (5, 5), activation="relu", strides=1, padding="same"),
+                                    name="conv5_1de")(conv5_2)
+
+    conv4_3 = SpectralNormalization(layers.Conv2DTranspose(512, (5, 5), activation="relu", strides=2, padding="same"),
+                                    name="conv4_3de")(conv5_1)
+    conv4_2 = SpectralNormalization(layers.Conv2DTranspose(512, (5, 5), activation="relu", strides=1, padding="same"),
+                                    name="conv4_2de")(conv4_3)
+    conv4_1 = SpectralNormalization(layers.Conv2DTranspose(512, (5, 5), activation="relu", strides=1, padding="same"),
+                                    name="conv4_1de")(conv4_2)
+
+    conv3_3 = SpectralNormalization(layers.Conv2DTranspose(256, (5, 5), activation="relu", strides=2, padding="same"),
+                                    name="conv3_3de")(conv4_1)
+    conv3_2 = SpectralNormalization(layers.Conv2DTranspose(256, (5, 5), activation="relu", strides=1, padding="same"),
+                                    name="conv3_2de")(conv3_3)
+    conv3_1 = SpectralNormalization(layers.Conv2DTranspose(128, (5, 5), activation="relu", strides=1, padding="same"),
+                                    name="conv3_1de")(conv3_2)
+
+    conv2_2 = SpectralNormalization(layers.Conv2DTranspose(128, (5, 5), activation="relu", strides=2, padding="same"),
+                                    name="conv2_2de")(conv3_1)
+    conv2_1 = SpectralNormalization(layers.Conv2DTranspose(64, (5, 5), activation="relu", strides=1, padding="same"),
+                                    name="conv2_1de")(conv2_2)
+
+    conv1_2 = SpectralNormalization(layers.Conv2DTranspose(64, (5, 5), activation="relu", strides=2, padding="same"),
+                                    name="conv1_2de")(conv2_1)
+    decoder_outputs = SpectralNormalization(layers.Conv2DTranspose(3, (5, 5), activation="relu", strides=1, padding="same"),
+                                            name="conv1_1de")(conv1_2)
+
+    decoder = keras.Model(latent_inputs, [dense, reshape, conv5_3, conv5_2, conv5_1, conv4_3, conv4_2, conv4_1, conv3_3, conv3_2,
+                                          conv3_1, conv2_2, conv2_1, conv1_2, decoder_outputs], name="decoder")
+
+    return decoder
+
 
 def decoder_3conv(LATENT_DIM):
     # DONT CALL THIS ONE: IT ISN"T DONE

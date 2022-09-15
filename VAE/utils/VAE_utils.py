@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-
+import copy
 import json
 import os
-import time
 import tqdm
 from tqdm import trange
 import shutil
@@ -44,7 +43,7 @@ def load_single_image(annotation, img_dim, img_ch, output_preprocess_path):
         if (height != img_dim) or (width != img_dim):
                 image = sk.transform.resize(image[:, :, :img_ch], (img_dim, img_dim, img_ch))
 
-        if annotation['z_filename'] != 'None':
+        if annotation['z_filename'] != 'None' and img_ch==4:
             z_image = load_image_as_array(annotation['z_img_path'])
 
             height, width = z_image.shape[:2]
@@ -290,9 +289,10 @@ def get_log_pz_qz_prodzi_qzCx(latent_sample, latent_dist, n_data, is_mss=True):
     batch_size, hidden_dim = latent_sample.shape
 
     #calculate log q(z|x)
-    log_q_zCx = log_density_gaussian(latent_sample, *latent_dist).sum(dim=1)
+    #log_q_zCx = log_density_gaussian(latent_sample, *latent_dist).sum(dim=1)
 
     # calculate log p(z)
+    return 0
 
 
 def disentangle_loss(data, featuresOG, features, IMG_DIM, a=1, b=1, c=1):
@@ -353,3 +353,54 @@ def generate_img_set(decoder, z, filepath, orig_list, orig_imgs, IMG_DIM, IMG_CH
         loss_per_img.append(float(np.array(reconstruction_loss)))
 
     return loss_per_img
+
+
+def img_from_latentVector(decoder, z):
+    _, _, _, _, _, _, _, img = decoder(np.array([z]))
+    img = np.array(img)
+    img = img[0, :, :, :]
+
+    img_rgb = 255.999 * img
+    img_rgb = np.array(img_rgb, dtype='float32').astype('uint8')
+    img_bgr = np.dstack((img_rgb[:, :, 2], img_rgb[:, :, 1], img_rgb[:, :, 0]))
+    return img_bgr
+
+
+def generate_adversarial_img_set(z_data, decoder, filepath, distribution="UNIFORM", num_centers=10, num_steps=10):
+
+    adversarial_img_dir = "adv_imgs"
+    path = os.path.join(filepath, adversarial_img_dir)
+    os.mkdir(path)
+
+    z = np.squeeze(np.array([z_data]))
+    num_pts = len(z)
+    # make sure you are staying inside the defined space
+    z_max = np.max(z, axis=0) #get the max value for each dimension
+    z_min = np.min(z, axis=0) #get the min value for each dimension
+
+    if distribution == "UNIFORM":
+        og_pt = np.random.randint(num_pts)
+
+        for i in trange(num_centers):
+            next_pt = np.random.randint(num_pts)
+            z0 = z[og_pt, :]
+            z1 = z[next_pt, :]
+            img_z_seq = np.linspace(z0, z1, num_steps)
+
+            for j in trange(num_steps):
+                new_z = img_z_seq[j, :]
+                img = img_from_latentVector(decoder, new_z)
+                img_name = path + "\\" + str(i) + "_" + str(j) + "_"+ str(og_pt)+"_to_"+str(next_pt)+".png"
+                cv2.imwrite(img_name, img)
+
+            og_pt = copy.copy(next_pt)
+
+    else: # use a gaussian distribution
+        z_mean = np.mean(z, axis=0)  # get the avg value along each dimension
+        z_stdDev = np.std(z, axis=0)  # get the standard dev along each dimension
+    #Calculate distribution
+    bp = 0
+
+
+
+

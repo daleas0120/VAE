@@ -25,6 +25,7 @@ from tensorflow import keras
 from VAE.utils.VAE_utils import RGB_Dataset
 from VAE.include import VAE_arch
 from VAE import VAE
+from VAE.utils.image_writer import ImageWriterCallback
 
 from sklearn.preprocessing import LabelBinarizer
 
@@ -73,9 +74,11 @@ def main():
     if PATH_TO_ENCODER:
         encoder = keras.models.load_model(os.path.join(PATH_TO_ENCODER, "encoder"))
     else:
-        encoder = VAE_arch.betaVAE_encoder(IMG_DIM, IMG_CH, LATENT_DIM)
+        #encoder = VAE_arch.betaVAE_encoder(IMG_DIM, IMG_CH, LATENT_DIM)
         #encoder = VAE_arch.encoder_3conv7c(IMG_DIM, IMG_CH, LATENT_DIM)
         #encoder = VAE_arch.encoder_3conv7d(IMG_DIM, IMG_CH, LATENT_DIM)
+        #6 Sept 2022
+        encoder = VAE_arch.encoder_vgg_sn(IMG_DIM, IMG_CH, LATENT_DIM)
 
     encoder.summary()
 
@@ -88,7 +91,10 @@ def main():
     else:
         # Decoding network
         #decoder = VAE_arch.decoder_3conv7c(LATENT_DIM)
-        decoder = VAE_arch.betaVAE_decoder(LATENT_DIM)
+        #decoder = VAE_arch.decoder_3conv7d(LATENT_DIM)
+        #decoder = VAE_arch.betaVAE_decoder(LATENT_DIM)
+        # 6 Sept 2022
+        decoder = VAE_arch.decoder_vgg_sn(IMG_DIM, LATENT_DIM)
 
     decoder.summary()
 
@@ -105,6 +111,8 @@ def main():
         workers=WORKERS
     )
 
+    print('Rnadomizing Image Order')
+    
     # randomize order
     imgs = np.random.permutation(orig_imgs)
 
@@ -168,6 +176,9 @@ def main():
         log_dir=(tb_path), 
         histogram_freq=10,
     )]
+
+    img_file_writer = tf.summary.create_file_writer(os.path.join(tb_path, 'images'))
+    callbacks.append(ImageWriterCallback(img_file_writer, vae, imgs))
 
     # EarlyStopping
     if EARLY_STOPPING_FLAG:
